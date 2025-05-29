@@ -1948,14 +1948,6 @@ def create_fulfillments_for_returned_products(
             shipping_refund_amount=shipping_refund_amount,
             manager=manager,
         )
-        Fulfillment.objects.filter(
-            order=order,
-            lines=None,
-            status__in=[
-                FulfillmentStatus.FULFILLED,
-                FulfillmentStatus.WAITING_FOR_APPROVAL,
-            ],
-        ).delete()
 
         call_order_event(manager, WebhookEventAsyncType.ORDER_UPDATED, order)
         if new_order:
