@@ -483,6 +483,10 @@ class User(ModelObjectType[models.User]):
             required=True,
         ),
     )
+    customer_groups = NonNullList(
+        "saleor.graphql.account.types.CustomerGroup",
+        description="List of customer groups assigned to the user.",
+    )
 
     class Meta:
         description = "Represents user data."
@@ -591,6 +595,12 @@ class User(ModelObjectType[models.User]):
     @staticmethod
     def resolve_permission_groups(root: models.User, info: ResolveInfo):
         return root.groups.using(get_database_connection_name(info.context)).all()
+
+    @staticmethod
+    def resolve_customer_groups(root: models.User, info: ResolveInfo):
+        return root.customer_groups.using(
+            get_database_connection_name(info.context)
+        ).all()
 
     @staticmethod
     def resolve_editable_groups(root: models.User, info: ResolveInfo):
@@ -1076,8 +1086,9 @@ class CustomerGroup(ModelObjectType[models.CustomerGroup]):
         from .resolvers import resolve_permission_groups
 
         requestor = get_user_or_app_from_context(info.context)
-        if not requestor or not requestor.has_perm(
-            AuthorizationFilters.AUTHENTICATED_STAFF_USER
+        if not requestor or (
+            not requestor.has_perm(AuthorizationFilters.AUTHENTICATED_STAFF_USER)
+            and not requestor.has_perm(AuthorizationFilters.AUTHENTICATED_APP)
         ):
             qs = models.CustomerGroup.objects.none()
         else:

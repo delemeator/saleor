@@ -89,21 +89,49 @@ def calculate_discounted_price_for_rules(
     return max(price - total_discount, zero_money(currency))
 
 
+def filter_public_rules(
+    rules_info: list[PromotionRuleInfo] | None,
+) -> tuple[list[PromotionRuleInfo], list[PromotionRuleInfo]]:
+    """Filter out rules that are not public."""
+    if not rules_info:
+        return [], []
+
+    public_rules, customer_group_rules = [], []
+
+    for rule_info in rules_info:
+        if rule_info.rule.customer_groups.exists():
+            customer_group_rules.append(rule_info)
+        else:
+            public_rules.append(rule_info)
+
+    return public_rules, customer_group_rules
+
+
 def calculate_discounted_price_for_promotions(
     *,
     price: Money,
     rules_info_per_variant: dict[int, list[PromotionRuleInfo]],
     channel: "Channel",
     variant_id: int,
-) -> tuple[UUID, Money] | None:
+) -> tuple[tuple[UUID, Money] | None, list[tuple[UUID, Money]]]:
     """Return minimum product's price of all prices with promotions applied."""
     applied_discount = None
-    rules_info_for_variant = rules_info_per_variant.get(variant_id)
-    if rules_info_for_variant:
-        applied_discount = get_best_promotion_discount(
-            price, rules_info_for_variant, channel
-        )
-    return applied_discount
+    public_rules, customer_group_rules = filter_public_rules(
+        rules_info_per_variant.get(variant_id)
+    )
+
+    if public_rules:
+        applied_discount = get_best_promotion_discount(price, public_rules, channel)
+
+    customer_group_discounts = get_product_promotion_discounts(
+        rules_info=customer_group_rules, channel=channel
+    )
+    customer_group_discounts = [
+        (rule_id, price - discount(price))
+        for rule_id, discount in customer_group_discounts
+    ]
+
+    return (applied_discount, customer_group_discounts)
 
 
 def get_best_promotion_discount(
@@ -518,8 +546,6 @@ def get_variants_to_promotion_rules_map(
             Q(customer_groups__isnull=True)
             | Q(Exists(customer_group_qs.filter(id=OuterRef("customer_groups__id"))))
         )
-    else:
-        rules = rules.filter(customer_groups__isnull=True)
 
     rule_to_channel_ids_map = _get_rule_to_channel_ids_map(rules)
     rules_in_bulk = rules.in_bulk()

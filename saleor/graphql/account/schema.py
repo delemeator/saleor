@@ -78,6 +78,7 @@ from .mutations.staff import (
 from .resolvers import (
     resolve_address,
     resolve_address_validation_rules,
+    resolve_customer_groups,
     resolve_customers,
     resolve_permission_group,
     resolve_permission_groups,
@@ -151,11 +152,14 @@ class AccountQueries(graphene.ObjectType):
     )
     customer_groups = FilterConnectionField(
         CustomerGroupCountableConnection,
-        filter=PermissionGroupFilterInput(
+        filter=CustomerGroupFilterInput(
             description="Filtering options for customer groups."
         ),
         description="List of customer groups.",
-        permissions=[AuthorizationFilters.AUTHENTICATED_STAFF_USER],
+        permissions=[
+            AuthorizationFilters.AUTHENTICATED_STAFF_USER,
+            AuthorizationFilters.AUTHENTICATED_APP,
+        ],
         doc_category=DOC_CATEGORY_USERS,
     )
     customers = FilterConnectionField(
@@ -253,6 +257,16 @@ class AccountQueries(graphene.ObjectType):
             qs, kwargs, allow_replica=info.context.allow_replica
         )
         return create_connection_slice(qs, info, kwargs, UserCountableConnection)
+
+    @staticmethod
+    def resolve_customer_groups(_root, info: ResolveInfo, **kwargs):
+        qs = resolve_customer_groups(info)
+        qs = filter_connection_queryset(
+            qs, kwargs, allow_replica=info.context.allow_replica
+        )
+        return create_connection_slice(
+            qs, info, kwargs, CustomerGroupCountableConnection
+        )
 
     @staticmethod
     def resolve_permission_groups(_root, info: ResolveInfo, **kwargs):
