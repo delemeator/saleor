@@ -10,11 +10,20 @@ from pydantic import ValidationError
 from ....payment import TransactionAction, TransactionEventType
 from ...response_schemas.transaction import (
     PaymentGatewayInitializeSessionSchema,
-    TransactionCancelRequestedSchema,
-    TransactionChargeRequestedSchema,
-    TransactionRefundRequestedSchema,
-    TransactionSchema,
-    TransactionSessionSchema,
+    TransactionBaseSchema,
+    TransactionCancelationRequestedAsyncSchema,
+    TransactionCancelationRequestedSyncFailureSchema,
+    TransactionCancelationRequestedSyncSuccessSchema,
+    TransactionChargeRequestedAsyncSchema,
+    TransactionChargeRequestedSyncFailureSchema,
+    TransactionChargeRequestedSyncSuccessSchema,
+    TransactionRefundRequestedAsyncSchema,
+    TransactionRefundRequestedSyncFailureSchema,
+    TransactionRefundRequestedSyncSuccessSchema,
+    TransactionSessionActionRequiredSchema,
+    TransactionSessionBaseSchema,
+    TransactionSessionFailureSchema,
+    TransactionSessionSuccessSchema,
 )
 
 
@@ -31,7 +40,7 @@ def test_transaction_schema_valid_full_data():
     }
 
     # when
-    transaction = TransactionSchema.model_validate(data)
+    transaction = TransactionBaseSchema.model_validate(data)
 
     # then
     assert transaction.psp_reference == data["pspReference"]
@@ -66,7 +75,7 @@ def test_transaction_schema_valid_full_data():
 @freeze_time("2023-01-01T12:00:00+00:00")
 def test_transaction_schema_valid_only_required_fields(data):
     # when
-    transaction = TransactionSchema.model_validate(data)
+    transaction = TransactionBaseSchema.model_validate(data)
 
     # then
     assert transaction.psp_reference is None
@@ -91,7 +100,7 @@ def test_transaction_schema_with_various_amount_types(amount):
     }
 
     # when
-    transaction = TransactionSchema.model_validate(data)
+    transaction = TransactionBaseSchema.model_validate(data)
 
     # then
     assert transaction.amount == Decimal(str(amount))
@@ -128,7 +137,7 @@ def test_transaction_schema_time_valid(time, expected_datetime):
     }
 
     # when
-    transaction = TransactionSchema.model_validate(data)
+    transaction = TransactionBaseSchema.model_validate(data)
 
     # then
     assert transaction.time == expected_datetime
@@ -182,7 +191,7 @@ def test_transaction_schema_actions_validation(actions, expected_actions):
     }
 
     # when
-    transaction = TransactionSchema.model_validate(data)
+    transaction = TransactionBaseSchema.model_validate(data)
 
     # then
     assert transaction.actions == expected_actions
@@ -224,47 +233,16 @@ def test_transaction_schema_actions_validation(actions, expected_actions):
 def test_transaction_schema_invalid(data, invalid_field):
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionSchema.model_validate(data)
+        TransactionBaseSchema.model_validate(data)
 
     # then
     assert len(exc_info.value.errors()) == 1
     assert exc_info.value.errors()[0]["loc"] == (invalid_field,)
 
 
-@pytest.mark.parametrize(
-    "result",
-    [
-        TransactionEventType.AUTHORIZATION_SUCCESS,
-        TransactionEventType.CHARGE_SUCCESS,
-        TransactionEventType.CANCEL_SUCCESS,
-        TransactionEventType.REFUND_SUCCESS,
-        TransactionEventType.CHARGE_BACK,
-        TransactionEventType.REFUND_REVERSE,
-    ],
-)
-def test_transaction_schema_time_missing_psp_reference(result):
+def test_transaction_charge_requested_sync_success_schema_valid():
     # given
-    data = {
-        "amount": Decimal("100.00"),
-        "result": result.upper(),
-    }
-
-    # when/then
-    with pytest.raises(ValidationError) as exc_info:
-        TransactionSchema.model_validate(data)
-
-    assert len(exc_info.value.errors()) == 1
-
-
-@pytest.mark.parametrize(
-    "result",
-    [
-        TransactionEventType.CHARGE_SUCCESS,
-        TransactionEventType.CHARGE_FAILURE,
-    ],
-)
-def test_transaction_charge_requested_schema_valid(result):
-    # given
+    result = TransactionEventType.CHARGE_SUCCESS
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
@@ -276,7 +254,7 @@ def test_transaction_charge_requested_schema_valid(result):
     }
 
     # when
-    transaction = TransactionChargeRequestedSchema.model_validate(data)
+    transaction = TransactionChargeRequestedSyncSuccessSchema.model_validate(data)
 
     # then
     assert transaction.result == result
@@ -285,54 +263,44 @@ def test_transaction_charge_requested_schema_valid(result):
 @pytest.mark.parametrize(
     "result",
     [
-        TransactionEventType.CANCEL_FAILURE,
-        TransactionEventType.REFUND_FAILURE,
         TransactionEventType.CANCEL_SUCCESS,
         TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CANCEL_FAILURE,
+        TransactionEventType.REFUND_FAILURE,
     ],
 )
-def test_transaction_charge_requested_schema_invalid(result):
+def test_transaction_charge_requested_sync_success_schema_invalid(result):
     # given
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
-        "time": "2023-01-01T12:00:00+00:00",
-        "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
-        "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
     }
 
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionChargeRequestedSchema.model_validate(data)
+        TransactionChargeRequestedSyncSuccessSchema.model_validate(data)
+    assert len(exc_info.value.errors()) == 1
 
     # then
-    assert len(exc_info.value.errors()) == 1
     assert exc_info.value.errors()[0]["loc"] == ("result",)
 
 
-@pytest.mark.parametrize(
-    "result",
-    [
-        TransactionEventType.CANCEL_SUCCESS,
-        TransactionEventType.CANCEL_FAILURE,
-    ],
-)
-def test_transaction_cancel_requested_schema_valid(result):
+def test_transaction_charge_requested_sync_failure_schema_valid():
     # given
+    result = TransactionEventType.CHARGE_FAILURE
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
         "time": "2023-01-01T12:00:00+00:00",
         "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
+        "message": "Transaction failed.",
         "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
     }
 
     # when
-    transaction = TransactionCancelRequestedSchema.model_validate(data)
+    transaction = TransactionChargeRequestedSyncFailureSchema.model_validate(data)
 
     # then
     assert transaction.result == result
@@ -341,54 +309,74 @@ def test_transaction_cancel_requested_schema_valid(result):
 @pytest.mark.parametrize(
     "result",
     [
-        TransactionEventType.CHARGE_FAILURE,
-        TransactionEventType.REFUND_FAILURE,
-        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
         TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CANCEL_FAILURE,
+        TransactionEventType.REFUND_FAILURE,
     ],
 )
-def test_transaction_cancel_requested_schema_invalid(result):
+def test_transaction_charge_requested_sync_failure_schema_invalid(result):
     # given
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
-        "time": "2023-01-01T12:00:00+00:00",
-        "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
-        "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
     }
 
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionCancelRequestedSchema.model_validate(data)
+        TransactionChargeRequestedSyncFailureSchema.model_validate(data)
 
     # then
     assert len(exc_info.value.errors()) == 1
     assert exc_info.value.errors()[0]["loc"] == ("result",)
 
 
-@pytest.mark.parametrize(
-    "result",
-    [
-        TransactionEventType.REFUND_SUCCESS,
-        TransactionEventType.REFUND_FAILURE,
-    ],
-)
-def test_transaction_refund_requested_schema_valid(result):
+def test_transaction_charge_requested_async_schema_valid():
     # given
+    data = {
+        "pspReference": "psp-async-123",
+        "actions": [TransactionAction.CHARGE.upper()],
+    }
+
+    # when
+    transaction = TransactionChargeRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert transaction.psp_reference == "psp-async-123"
+
+
+def test_transaction_charge_requested_async_schema_invalid():
+    # given
+    data = {
+        "pspReference": 123,
+        "actions": [TransactionAction.CHARGE.upper()],
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionChargeRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("pspReference",)
+
+
+def test_transaction_cancel_requested_sync_success_schema_valid():
+    # given
+    result = TransactionEventType.CANCEL_SUCCESS
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
         "time": "2023-01-01T12:00:00+00:00",
         "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
-        "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
+        "message": "Transaction cancelled successfully.",
+        "actions": [TransactionAction.CANCEL.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
     }
 
     # when
-    transaction = TransactionRefundRequestedSchema.model_validate(data)
+    transaction = TransactionCancelationRequestedSyncSuccessSchema.model_validate(data)
 
     # then
     assert transaction.result == result
@@ -397,61 +385,245 @@ def test_transaction_refund_requested_schema_valid(result):
 @pytest.mark.parametrize(
     "result",
     [
-        TransactionEventType.CHARGE_FAILURE,
-        TransactionEventType.CANCEL_FAILURE,
         TransactionEventType.CHARGE_SUCCESS,
-        TransactionEventType.CANCEL_SUCCESS,
+        TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.REFUND_FAILURE,
     ],
 )
-def test_transaction_refund_requested_schema_invalid(result):
+def test_transaction_cancel_requested_sync_success_schema_invalid(result):
     # given
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
-        "time": "2023-01-01T12:00:00+00:00",
-        "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
-        "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
     }
 
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionRefundRequestedSchema.model_validate(data)
+        TransactionCancelationRequestedSyncSuccessSchema.model_validate(data)
 
     # then
     assert len(exc_info.value.errors()) == 1
     assert exc_info.value.errors()[0]["loc"] == ("result",)
 
 
+def test_transaction_cancel_requested_sync_failure_schema_valid():
+    # given
+    result = TransactionEventType.CANCEL_FAILURE
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "time": "2023-01-01T12:00:00+00:00",
+        "externalUrl": "https://example.com/",
+        "message": "Transaction cancel failed.",
+        "actions": [TransactionAction.CANCEL.upper(), TransactionAction.REFUND.upper()],
+        "result": result.upper(),
+    }
+
+    # when
+    transaction = TransactionCancelationRequestedSyncFailureSchema.model_validate(data)
+
+    # then
+    assert transaction.result == result
+
+
 @pytest.mark.parametrize(
     "result",
     [
-        TransactionEventType.AUTHORIZATION_SUCCESS,
-        TransactionEventType.AUTHORIZATION_FAILURE,
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.REFUND_FAILURE,
+    ],
+)
+def test_transaction_cancel_requested_sync_failure_schema_invalid(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionCancelationRequestedSyncFailureSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("result",)
+
+
+def test_transaction_cancel_requested_async_schema_valid():
+    # given
+    data = {
+        "pspReference": "psp-async-123",
+        "actions": [TransactionAction.CANCEL.upper()],
+    }
+
+    # when
+    transaction = TransactionCancelationRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert transaction.psp_reference == "psp-async-123"
+
+
+def test_transaction_cancel_requested_async_schema_invalid():
+    # given
+    data = {
+        "pspReference": 123,
+        "actions": [TransactionAction.CANCEL.upper()],
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionCancelationRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("pspReference",)
+
+
+def test_transaction_refund_requested_sync_success_schema_valid():
+    # given
+    result = TransactionEventType.REFUND_SUCCESS
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "time": "2023-01-01T12:00:00+00:00",
+        "externalUrl": "https://example.com/",
+        "message": "Transaction refunded successfully.",
+        "actions": [TransactionAction.REFUND.upper(), TransactionAction.CHARGE.upper()],
+        "result": result.upper(),
+    }
+
+    # when
+    transaction = TransactionRefundRequestedSyncSuccessSchema.model_validate(data)
+
+    # then
+    assert transaction.result == result
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.CANCEL_FAILURE,
+    ],
+)
+def test_transaction_refund_requested_sync_success_schema_invalid(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionRefundRequestedSyncSuccessSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("result",)
+
+
+def test_transaction_refund_requested_sync_failure_schema_valid():
+    # given
+    result = TransactionEventType.REFUND_FAILURE
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "time": "2023-01-01T12:00:00+00:00",
+        "externalUrl": "https://example.com/",
+        "message": "Transaction refund failed.",
+        "actions": [TransactionAction.REFUND.upper(), TransactionAction.CHARGE.upper()],
+        "result": result.upper(),
+    }
+
+    # when
+    transaction = TransactionRefundRequestedSyncFailureSchema.model_validate(data)
+
+    # then
+    assert transaction.result == result
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.CANCEL_FAILURE,
+    ],
+)
+def test_transaction_refund_requested_sync_failure_schema_invalid(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionRefundRequestedSyncFailureSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("result",)
+
+
+def test_transaction_refund_requested_async_schema_valid():
+    # given
+    data = {
+        "pspReference": "psp-async-123",
+        "actions": [TransactionAction.REFUND.upper()],
+    }
+
+    # when
+    transaction = TransactionRefundRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert transaction.psp_reference == "psp-async-123"
+
+
+def test_transaction_refund_requested_async_schema_invalid():
+    # given
+    data = {
+        "pspReference": 123,
+        "actions": [TransactionAction.REFUND.upper()],
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionRefundRequestedAsyncSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("pspReference",)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
         TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
-        TransactionEventType.AUTHORIZATION_REQUEST,
-        TransactionEventType.CHARGE_SUCCESS,
-        TransactionEventType.CHARGE_FAILURE,
         TransactionEventType.CHARGE_ACTION_REQUIRED,
-        TransactionEventType.CHARGE_REQUEST,
     ],
 )
-def test_transaction_session_schema_valid_result(result):
+def test_transaction_session_action_required_schema_valid_result(result):
     # given
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
-        "time": "2023-01-01T12:00:00+00:00",
-        "externalUrl": "https://example.com/",
-        "message": "Transaction completed successfully.",
-        "actions": [TransactionAction.CHARGE.upper(), TransactionAction.REFUND.upper()],
         "result": result.upper(),
         "data": "test-data",
     }
 
     # when
-    transaction = TransactionSessionSchema.model_validate(data)
+    transaction = TransactionSessionActionRequiredSchema.model_validate(data)
 
     # then
     assert transaction.result == result
@@ -460,23 +632,514 @@ def test_transaction_session_schema_valid_result(result):
 @pytest.mark.parametrize(
     "result",
     [
-        TransactionEventType.REFUND_FAILURE,
-        TransactionEventType.CANCEL_FAILURE,
-        TransactionEventType.REFUND_SUCCESS,
-        TransactionEventType.CANCEL_SUCCESS,
+        TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
+        TransactionEventType.CHARGE_ACTION_REQUIRED,
     ],
 )
-def test_transaction_session_schema_invalid_result(result):
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "firstDigits": "1234",
+            "lastDigits": "5678",
+            "expMonth": 12,
+            "expYear": 2025,
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "lastDigits": "5678",
+        },
+        {
+            "type": "OTHER",
+            "name": "Test Other",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": None,
+            "firstDigits": None,
+            "lastDigits": None,
+            "expMonth": None,
+            "expYear": None,
+        },
+    ],
+)
+def test_transaction_session_action_required_schema_valid_payment_method_details(
+    payment_method_details, result
+):
     # given
     data = {
         "pspReference": "psp-123",
         "amount": Decimal("100.50"),
         "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when
+    parsed_transaction = TransactionSessionActionRequiredSchema.model_validate(data)
+
+    # then
+    assert parsed_transaction.result == result
+    assert parsed_transaction.payment_method_details
+    parsed_payment_method_details = parsed_transaction.payment_method_details
+
+    assert parsed_payment_method_details.type == payment_method_details["type"].lower()
+    assert parsed_payment_method_details.name == payment_method_details["name"]
+    assert getattr(
+        parsed_payment_method_details, "brand", None
+    ) == payment_method_details.get("brand")
+    assert getattr(
+        parsed_payment_method_details, "first_digits", None
+    ) == payment_method_details.get("firstDigits")
+    assert getattr(
+        parsed_payment_method_details, "last_digits", None
+    ) == payment_method_details.get("lastDigits")
+    assert getattr(
+        parsed_payment_method_details, "exp_month", None
+    ) == payment_method_details.get("expMonth")
+    assert getattr(
+        parsed_payment_method_details, "exp_year", None
+    ) == payment_method_details.get("expYear")
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
+        TransactionEventType.CHARGE_ACTION_REQUIRED,
+    ],
+)
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        # unknown type
+        {
+            "type": "WRONG-TYPE",
+            "name": "Test Card",
+        },
+        # Missing name
+        {
+            "type": "CARD",
+        },
+        # Missing type
+        {
+            "name": "Test Card",
+        },
+    ],
+)
+def test_transaction_session_action_required_schema_invalid_payment_method_details(
+    payment_method_details, result
+):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when & then
+    with pytest.raises(ValidationError):
+        TransactionSessionActionRequiredSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_SUCCESS,
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.AUTHORIZATION_FAILURE,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.AUTHORIZATION_REQUEST,
+        TransactionEventType.CHARGE_REQUEST,
+        TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
+    ],
+)
+def test_transaction_session_action_required_schema_invalid_result(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
     }
 
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionSessionSchema.model_validate(data)
+        TransactionSessionActionRequiredSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("result",)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_SUCCESS,
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.AUTHORIZATION_REQUEST,
+        TransactionEventType.CHARGE_REQUEST,
+    ],
+)
+def test_transaction_session_success_schema_valid_result(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+    }
+
+    # when
+    transaction = TransactionSessionSuccessSchema.model_validate(data)
+
+    # then
+    assert transaction.result == result
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_SUCCESS,
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.AUTHORIZATION_REQUEST,
+        TransactionEventType.CHARGE_REQUEST,
+    ],
+)
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "firstDigits": "1234",
+            "lastDigits": "5678",
+            "expMonth": 12,
+            "expYear": 2025,
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "lastDigits": "5678",
+        },
+        {
+            "type": "OTHER",
+            "name": "Test Other",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": None,
+            "firstDigits": None,
+            "lastDigits": None,
+            "expMonth": None,
+            "expYear": None,
+        },
+    ],
+)
+def test_transaction_session_success_schema_valid_payment_method_details(
+    payment_method_details, result
+):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when
+    parsed_transaction = TransactionSessionSuccessSchema.model_validate(data)
+
+    # then
+    assert parsed_transaction.result == result
+    assert parsed_transaction.payment_method_details
+    parsed_payment_method_details = parsed_transaction.payment_method_details
+
+    assert parsed_payment_method_details.type == payment_method_details["type"].lower()
+    assert parsed_payment_method_details.name == payment_method_details["name"]
+    assert getattr(
+        parsed_payment_method_details, "brand", None
+    ) == payment_method_details.get("brand")
+    assert getattr(
+        parsed_payment_method_details, "first_digits", None
+    ) == payment_method_details.get("firstDigits")
+    assert getattr(
+        parsed_payment_method_details, "last_digits", None
+    ) == payment_method_details.get("lastDigits")
+    assert getattr(
+        parsed_payment_method_details, "exp_month", None
+    ) == payment_method_details.get("expMonth")
+    assert getattr(
+        parsed_payment_method_details, "exp_year", None
+    ) == payment_method_details.get("expYear")
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_SUCCESS,
+        TransactionEventType.CHARGE_SUCCESS,
+    ],
+)
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        # unknown type
+        {
+            "type": "WRONG-TYPE",
+            "name": "Test Card",
+        },
+        # Missing name
+        {
+            "type": "CARD",
+        },
+        # Missing type
+        {
+            "name": "Test Card",
+        },
+    ],
+)
+def test_transaction_session_success_schema_invalid_payment_method_details(
+    payment_method_details, result
+):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when & then
+    with pytest.raises(ValidationError):
+        TransactionSessionSuccessSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_FAILURE,
+        TransactionEventType.CHARGE_FAILURE,
+        TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
+        TransactionEventType.CHARGE_ACTION_REQUIRED,
+        TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
+    ],
+)
+def test_transaction_session_success_schema_invalid_result(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionSessionSuccessSchema.model_validate(data)
+
+    # then
+    assert len(exc_info.value.errors()) == 1
+    assert exc_info.value.errors()[0]["loc"] == ("result",)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_FAILURE,
+        TransactionEventType.CHARGE_FAILURE,
+    ],
+)
+def test_transaction_session_failure_schema_valid_result(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+    }
+
+    # when
+    transaction = TransactionSessionFailureSchema.model_validate(data)
+
+    # then
+    assert transaction.result == result
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_FAILURE,
+        TransactionEventType.CHARGE_FAILURE,
+    ],
+)
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "firstDigits": "1234",
+            "lastDigits": "5678",
+            "expMonth": 12,
+            "expYear": 2025,
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": "Brand",
+            "lastDigits": "5678",
+        },
+        {
+            "type": "OTHER",
+            "name": "Test Other",
+        },
+        {
+            "type": "CARD",
+            "name": "Test Card",
+            "brand": None,
+            "firstDigits": None,
+            "lastDigits": None,
+            "expMonth": None,
+            "expYear": None,
+        },
+    ],
+)
+def test_transaction_session_failure_schema_valid_payment_method_details(
+    payment_method_details, result
+):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when
+    parsed_transaction = TransactionSessionFailureSchema.model_validate(data)
+
+    # then
+
+    assert parsed_transaction.result == result
+    assert parsed_transaction.payment_method_details
+    parsed_payment_method_details = parsed_transaction.payment_method_details
+
+    assert parsed_payment_method_details.type == payment_method_details["type"].lower()
+    assert parsed_payment_method_details.name == payment_method_details["name"]
+    assert getattr(
+        parsed_payment_method_details, "brand", None
+    ) == payment_method_details.get("brand")
+    assert getattr(
+        parsed_payment_method_details, "first_digits", None
+    ) == payment_method_details.get("firstDigits")
+    assert getattr(
+        parsed_payment_method_details, "last_digits", None
+    ) == payment_method_details.get("lastDigits")
+    assert getattr(
+        parsed_payment_method_details, "exp_month", None
+    ) == payment_method_details.get("expMonth")
+    assert getattr(
+        parsed_payment_method_details, "exp_year", None
+    ) == payment_method_details.get("expYear")
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
+        TransactionEventType.CHARGE_ACTION_REQUIRED,
+    ],
+)
+@pytest.mark.parametrize(
+    "payment_method_details",
+    [
+        # unknown type
+        {
+            "type": "WRONG-TYPE",
+            "name": "Test Card",
+        },
+        # Missing name
+        {
+            "type": "CARD",
+        },
+        # Missing type
+        {
+            "name": "Test Card",
+        },
+    ],
+)
+def test_transaction_session_failure_schema_invalid_payment_method_details(
+    payment_method_details, result
+):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+        "paymentMethodDetails": payment_method_details,
+    }
+
+    # when & then
+    with pytest.raises(ValidationError):
+        TransactionSessionFailureSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        TransactionEventType.AUTHORIZATION_SUCCESS,
+        TransactionEventType.CHARGE_SUCCESS,
+        TransactionEventType.AUTHORIZATION_ACTION_REQUIRED,
+        TransactionEventType.CHARGE_ACTION_REQUIRED,
+        TransactionEventType.AUTHORIZATION_REQUEST,
+        TransactionEventType.CHARGE_REQUEST,
+        TransactionEventType.REFUND_SUCCESS,
+        TransactionEventType.CANCEL_SUCCESS,
+    ],
+)
+def test_transaction_session_failure_schema_invalid_result(result):
+    # given
+    data = {
+        "pspReference": "psp-123",
+        "amount": Decimal("100.50"),
+        "result": result.upper(),
+        "data": "test-data",
+    }
+
+    # when
+    with pytest.raises(ValidationError) as exc_info:
+        TransactionSessionFailureSchema.model_validate(data)
 
     # then
     assert len(exc_info.value.errors()) == 1
@@ -504,7 +1167,7 @@ def test_transaction_session_schema_invalid_result(result):
         123,
     ],
 )
-def test_transaction_session_schema_valid_data(data_value):
+def test_transaction_session_base_schema_valid_data(data_value):
     # given
     data = {
         "pspReference": "psp-123",
@@ -514,7 +1177,7 @@ def test_transaction_session_schema_valid_data(data_value):
     }
 
     # when
-    transaction = TransactionSessionSchema.model_validate(data)
+    transaction = TransactionSessionBaseSchema.model_validate(data)
 
     # then
     assert transaction.data == data_value
@@ -533,7 +1196,7 @@ def test_transaction_session_schema_valid_data(data_value):
         open,
     ],
 )
-def test_transaction_session_schema_invalid_data(data_value):
+def test_transaction_session_base_schema_invalid_data(data_value):
     # given
     data = {
         "pspReference": "psp-123",
@@ -544,7 +1207,7 @@ def test_transaction_session_schema_invalid_data(data_value):
 
     # when
     with pytest.raises(ValidationError) as exc_info:
-        TransactionSessionSchema.model_validate(data)
+        TransactionSessionBaseSchema.model_validate(data)
 
     # then
     assert len(exc_info.value.errors()) == 1

@@ -15,12 +15,7 @@ from .....checkout.error_codes import OrderCreateFromCheckoutErrorCode
 from .....checkout.fetch import fetch_checkout_info, fetch_checkout_lines
 from .....checkout.models import Checkout, CheckoutLine
 from .....checkout.payment_utils import update_checkout_payment_statuses
-from .....core.taxes import (
-    TaxDataError,
-    TaxError,
-    zero_money,
-    zero_taxed_money,
-)
+from .....core.taxes import TaxDataError, TaxError, zero_money, zero_taxed_money
 from .....discount import DiscountType, DiscountValueType, RewardValueType
 from .....discount.models import CheckoutLineDiscount, OrderLineDiscount
 from .....giftcard import GiftCardEvents
@@ -562,6 +557,7 @@ def test_order_from_checkout_gift_card_bought(
     checkout.metadata_storage.store_value_in_private_metadata(
         items={"accepted": "false"}
     )
+    checkout.email = customer_user.email
     checkout.user = customer_user
     checkout.save()
     checkout.metadata_storage.save()
@@ -864,7 +860,7 @@ def test_order_from_checkout_with_voucher_and_gift_card(
     shipping_listing = shipping_method.channel_listings.get(
         channel_id=checkout_with_voucher_percentage.channel_id
     )
-    shipping_listing.price_amount = Decimal("35")
+    shipping_listing.price_amount = Decimal(35)
     shipping_listing.save(update_fields=["price_amount"])
 
     code = voucher_percentage.codes.first()
@@ -1111,7 +1107,7 @@ def test_order_from_checkout_with_free_shipping_voucher_and_gift_card(
     shipping_listing = shipping_method.channel_listings.get(
         channel_id=checkout.channel_id
     )
-    shipping_amount = Decimal("35")
+    shipping_amount = Decimal(35)
     shipping_listing.price_amount = shipping_amount
     shipping_listing.save(update_fields=["price_amount"])
 

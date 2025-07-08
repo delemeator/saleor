@@ -31,6 +31,7 @@ from ..discount.models import CheckoutDiscount, NotApplicable, OrderLineDiscount
 from ..discount.utils.promotion import get_sale_id
 from ..discount.utils.voucher import (
     calculate_line_discount_amount_from_voucher,
+    get_customer_email_for_voucher_usage,
     increase_voucher_usage,
     is_line_level_voucher,
     is_order_level_voucher,
@@ -124,7 +125,7 @@ def _process_voucher_data_for_order(checkout_info: "CheckoutInfo") -> dict:
     if not voucher_code or not voucher:
         return {}
 
-    customer_email = cast(str, checkout_info.get_customer_email())
+    customer_email = cast(str, get_customer_email_for_voucher_usage(checkout_info))
 
     _increase_checkout_voucher_usage(checkout, voucher_code, voucher, customer_email)
     return {
@@ -372,6 +373,7 @@ def _create_line_for_order(
         translated_variant_name=translated_variant_name,
         product_sku=variant.sku,
         product_variant_id=variant.get_global_id(),
+        product_type_id=checkout_line_info.product.product_type_id,
         is_shipping_required=variant.is_shipping_required(),
         is_gift_card=variant.is_gift_card(),
         quantity=quantity,
@@ -719,6 +721,7 @@ def _prepare_order_data(
             "undiscounted_total": undiscounted_total,
             "shipping_tax_rate": shipping_tax_rate,
             "tax_error": checkout.tax_error,
+            "lines_count": len(order_data["lines"]),
         }
     )
 
@@ -737,11 +740,12 @@ def _prepare_order_data(
     try:
         manager.preprocess_order_creation(checkout_info, lines)
     except TaxError:
+        user_email = get_customer_email_for_voucher_usage(checkout_info)
         _release_checkout_voucher_usage(
             checkout,
             checkout_info.voucher_code,
             checkout_info.voucher,
-            order_data.get("user_email"),
+            user_email,
         )
         raise
 
@@ -1151,11 +1155,12 @@ def complete_checkout_post_payment_part(
         action_required = txn.action_required
         if action_required:
             action_data = txn.action_required_data
+            user_email = get_customer_email_for_voucher_usage(checkout_info)
             _release_checkout_voucher_usage(
                 checkout_info.checkout,
                 checkout_info.voucher_code,
                 checkout_info.voucher,
-                order_data.get("user_email"),
+                user_email,
             )
 
     order = None
@@ -1224,7 +1229,7 @@ def _increase_voucher_code_usage_value(checkout_info: "CheckoutInfo"):
     if not voucher or not code:
         return None
 
-    customer_email = cast(str, checkout_info.get_customer_email())
+    customer_email = cast(str, get_customer_email_for_voucher_usage(checkout_info))
 
     checkout = checkout_info.checkout
     _increase_checkout_voucher_usage(checkout, code, voucher, customer_email)
@@ -1471,6 +1476,7 @@ def _create_order_from_checkout(
         should_refresh_prices=False,
         tax_exemption=checkout_info.checkout.tax_exemption,
         tax_error=checkout_info.checkout.tax_error,
+        lines_count=len(checkout_lines_info),
         **_process_shipping_data_for_order(
             checkout_info,
             undiscounted_base_shipping_price,
@@ -1989,7 +1995,7 @@ def _complete_checkout_fail_handler(
             checkout,
             voucher_code,
             voucher,
-            checkout.get_customer_email(),
+            get_customer_email_for_voucher_usage(checkout_info),
             update_fields,
         )
 

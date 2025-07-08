@@ -61,7 +61,7 @@ def resolve_global_ids_to_primary_keys(
     ids: Iterable[str], graphene_type=None, raise_error: bool = False
 ):
     pks = []
-    invalid_ids = []
+    invalid_ids: list[str] = []
     used_type = graphene_type
 
     for graphql_id in ids:
@@ -290,7 +290,7 @@ def format_error(error, handled_exceptions, query=None):
     if query:
         exc._exc_query = query
     if isinstance(exc, handled_exceptions):
-        handled_errors_logger.info("A query had an error", exc_info=exc)
+        handled_errors_logger.debug("A query had an error", exc_info=exc)
     else:
         unhandled_errors_logger.error("A query failed unexpectedly", exc_info=exc)
 

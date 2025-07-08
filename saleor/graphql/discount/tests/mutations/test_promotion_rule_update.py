@@ -81,7 +81,7 @@ def test_promotion_rule_update_by_staff_user(
             }
         },
         reward_value_type=RewardValueType.PERCENTAGE,
-        reward_value=Decimal("5"),
+        reward_value=Decimal(5),
     )
     rule_id = graphene.Node.to_global_id("PromotionRule", rule.id)
 
@@ -106,7 +106,7 @@ def test_promotion_rule_update_by_staff_user(
         ]
     }
     collection.products.add(product_list[2])
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -163,7 +163,7 @@ def test_promotion_rule_update_by_app(
 
     add_channel_ids = [graphene.Node.to_global_id("Channel", channel_PLN.pk)]
     remove_channel_ids = [graphene.Node.to_global_id("Channel", channel_USD.pk)]
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -221,7 +221,7 @@ def test_promotion_rule_update_by_customer(
 
     add_channel_ids = [graphene.Node.to_global_id("Channel", channel_PLN.pk)]
     remove_channel_ids = [graphene.Node.to_global_id("Channel", channel_USD.pk)]
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
 
     variables = {
@@ -277,7 +277,7 @@ def test_promotion_rule_update_duplicates_channels_in_add_and_remove_field(
             },
         ]
     }
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
 
     variables = {
@@ -354,7 +354,7 @@ def test_promotion_rule_update_invalid_catalogue_predicate(
             },
         ],
     }
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
 
     variables = {
         "id": rule_id,
@@ -390,7 +390,7 @@ def test_promotion_rule_update_add_channel_with_different_currency_to_fixed_disc
     rule_id = graphene.Node.to_global_id("PromotionRule", rule.id)
 
     add_channel_ids = [graphene.Node.to_global_id("Channel", channel_PLN.pk)]
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
 
     variables = {
         "id": rule_id,
@@ -433,7 +433,7 @@ def test_promotion_rule_update_remove_last_channel_from_fixed_discount(
     rule_id = graphene.Node.to_global_id("PromotionRule", rule.id)
 
     remove_channel_ids = [graphene.Node.to_global_id("Channel", channel_USD.pk)]
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
 
     variables = {
         "id": rule_id,
@@ -475,7 +475,7 @@ def test_promotion_rule_update_remove_and_add_channel_with_the_same_currency(
 
     remove_channel_ids = [graphene.Node.to_global_id("Channel", channel_USD.pk)]
     add_channel_ids = [graphene.Node.to_global_id("Channel", other_channel_USD.pk)]
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
 
     variables = {
         "id": rule_id,
@@ -640,7 +640,7 @@ def test_promotion_rule_update_reward_value_invalid_percentage_value(
 
     add_channel_ids = [graphene.Node.to_global_id("Channel", channel_PLN.pk)]
     remove_channel_ids = [graphene.Node.to_global_id("Channel", channel_USD.pk)]
-    reward_value = Decimal("101")
+    reward_value = Decimal(101)
 
     variables = {
         "id": rule_id,
@@ -694,7 +694,7 @@ def test_promotion_rule_update_clears_old_sale_id(
             }
         },
         reward_value_type=RewardValueType.PERCENTAGE,
-        reward_value=Decimal("5"),
+        reward_value=Decimal(5),
     )
     rule_id = graphene.Node.to_global_id("PromotionRule", rule.id)
 
@@ -719,7 +719,7 @@ def test_promotion_rule_update_clears_old_sale_id(
         ]
     }
     collection.products.add(product_list[2])
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -786,7 +786,7 @@ def test_promotion_rule_update_events(
             },
         ]
     }
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
 
     variables = {

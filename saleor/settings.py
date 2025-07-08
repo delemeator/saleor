@@ -113,12 +113,21 @@ DATABASE_CONNECTION_DEFAULT_NAME = "default"
 # This variable should be set to `replica`
 DATABASE_CONNECTION_REPLICA_NAME = "replica"
 
+if "DATABASE_URL_REPLICA" in os.environ:
+    DATABASE_URL_REPLICA_ENV_NAME = "DATABASE_URL_REPLICA"
+else:
+    # If replica env is not set, then always try to use the
+    # default env first.
+    DATABASE_URL_REPLICA_ENV_NAME = dj_database_url.DEFAULT_ENV
+
 DATABASES = {
     DATABASE_CONNECTION_DEFAULT_NAME: dj_database_url.config(
+        env=dj_database_url.DEFAULT_ENV,
         default="postgres://saleor:saleor@localhost:5432/saleor",
         conn_max_age=DB_CONN_MAX_AGE,
     ),
     DATABASE_CONNECTION_REPLICA_NAME: dj_database_url.config(
+        env=DATABASE_URL_REPLICA_ENV_NAME,
         default="postgres://saleor:saleor@localhost:5432/saleor",
         # TODO: We need to add read only user to saleor platform,
         # and we need to update docs.
@@ -406,6 +415,11 @@ LOGGING = {
         },
     },
     "loggers": {
+        "django.request": {
+            "handlers": ["default"],
+            "level": "ERROR",
+            "propagate": False,
+        },
         "django": {"level": "INFO", "propagate": True},
         "django.server": {
             "handlers": ["django.server"],
@@ -457,7 +471,16 @@ DEFAULT_CURRENCY_CODE_LENGTH = 3
 # Following the recommendation of https://tools.ietf.org/html/rfc5322#section-2.1.1
 DEFAULT_MAX_EMAIL_DISPLAY_NAME_LENGTH = 78
 
-COUNTRIES_OVERRIDE = {"EU": "European Union"}
+COUNTRIES_OVERRIDE = {
+    "EU": "European Union",
+    "XK": {
+        "name": "Kosovo",
+        "alpha3": "XXK",
+        "ioc_code": "KOS",
+        "numeric": "383",
+        "numeric_padded": "0383",
+    },
+}
 
 MAX_USER_ADDRESSES = int(os.environ.get("MAX_USER_ADDRESSES", 100))
 
@@ -495,7 +518,6 @@ AWS_S3_FILE_OVERWRITE = get_bool_from_env("AWS_S3_FILE_OVERWRITE", True)
 # See https://django-storages.readthedocs.io/en/latest/backends/gcloud.html
 GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID")
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME")
-GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME")
 GS_LOCATION = os.environ.get("GS_LOCATION", "")
 GS_CUSTOM_ENDPOINT = os.environ.get("GS_CUSTOM_ENDPOINT")
 GS_MEDIA_BUCKET_NAME = os.environ.get("GS_MEDIA_BUCKET_NAME")
@@ -522,17 +544,23 @@ AZURE_CONTAINER = os.environ.get("AZURE_CONTAINER")
 AZURE_CONTAINER_PRIVATE = os.environ.get("AZURE_CONTAINER_PRIVATE")
 AZURE_SSL = os.environ.get("AZURE_SSL")
 
+# Replicate behavior of creating default values
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 if AWS_STORAGE_BUCKET_NAME:
-    STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STORAGES["staticfiles"] = {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"}
 elif GS_BUCKET_NAME:
-    STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+    STORAGES["staticfiles"] = {"BACKEND": "storages.backends.gcloud.GoogleCloudStorage"}
 
 if AWS_MEDIA_BUCKET_NAME:
-    DEFAULT_FILE_STORAGE = "saleor.core.storages.S3MediaStorage"
+    STORAGES["default"] = {"BACKEND": "saleor.core.storages.S3MediaStorage"}
 elif GS_MEDIA_BUCKET_NAME:
-    DEFAULT_FILE_STORAGE = "saleor.core.storages.GCSMediaStorage"
+    STORAGES["default"] = {"BACKEND": "saleor.core.storages.GCSMediaStorage"}
 elif AZURE_CONTAINER:
-    DEFAULT_FILE_STORAGE = "saleor.core.storages.AzureMediaStorage"
+    STORAGES["default"] = {"BACKEND": "saleor.core.storages.AzureMediaStorage"}
 
 PRIVATE_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 if AWS_MEDIA_PRIVATE_BUCKET_NAME:
@@ -842,7 +870,7 @@ for entry_point in installed_plugins:
             INSTALLED_APPS.append(entry_point.name)
         EXTERNAL_PLUGINS.append(plugin_path)
 
-PLUGINS = BUILTIN_PLUGINS + EXTERNAL_PLUGINS
+PLUGINS: list[str] = BUILTIN_PLUGINS + EXTERNAL_PLUGINS
 
 # When `True`, HTTP requests made from arbitrary URLs will be rejected (e.g., webhooks).
 # if they try to access private IP address ranges, and loopback ranges (unless
@@ -894,9 +922,6 @@ CHECKOUT_PRICES_TTL = datetime.timedelta(
 CHECKOUT_TTL_BEFORE_RELEASING_FUNDS = datetime.timedelta(
     seconds=parse(os.environ.get("CHECKOUT_TTL_BEFORE_RELEASING_FUNDS", "6 hours"))
 )
-CHECKOUT_BATCH_FOR_RELEASING_FUNDS = os.environ.get(
-    "CHECKOUT_BATCH_FOR_RELEASING_FUNDS", 30
-)
 TRANSACTION_BATCH_FOR_RELEASING_FUNDS = os.environ.get(
     "TRANSACTION_BATCH_FOR_RELEASING_FUNDS", 60
 )
@@ -911,6 +936,8 @@ SEARCH_ORDERS_MAX_INDEXED_TRANSACTIONS = 20
 SEARCH_ORDERS_MAX_INDEXED_PAYMENTS = 20
 SEARCH_ORDERS_MAX_INDEXED_DISCOUNTS = 20
 SEARCH_ORDERS_MAX_INDEXED_LINES = 100
+SEARCH_ORDERS_MAX_INDEXED_INVOICES = 20
+SEARCH_ORDERS_MAX_INDEXED_EVENTS = 50
 
 # Maximum related objects that can be indexed in a product
 PRODUCT_MAX_INDEXED_ATTRIBUTES = 1000

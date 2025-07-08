@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from decimal import Decimal
 from functools import partial
-from typing import TYPE_CHECKING, Any, Final, Optional, Union
+from typing import TYPE_CHECKING, Any, Final, Optional, Union, cast
 
 import graphene
 from django.conf import settings
@@ -36,6 +36,7 @@ from ...order.models import Order
 from ...payment import PaymentError, TransactionKind
 from ...payment.interface import (
     GatewayResponse,
+    JSONValue,
     ListStoredPaymentMethodsRequestData,
     PaymentData,
     PaymentGateway,
@@ -109,6 +110,10 @@ from ...webhook.transport.list_stored_payment_methods import (
     get_response_for_stored_payment_method_request_delete,
     invalidate_cache_for_stored_payment_methods,
 )
+from ...webhook.transport.payment import (
+    parse_list_payment_gateways_response,
+    parse_payment_action_response,
+)
 from ...webhook.transport.shipping import (
     get_cache_data_for_shipping_list_methods_for_checkout,
     get_excluded_shipping_data,
@@ -120,17 +125,17 @@ from ...webhook.transport.synchronous.transport import (
     trigger_webhook_sync,
     trigger_webhook_sync_if_not_cached,
 )
-from ...webhook.transport.utils import (
+from ...webhook.transport.taxes import (
     DEFAULT_TAX_CODE,
     DEFAULT_TAX_DESCRIPTION,
+    get_current_tax_app,
+    parse_tax_data,
+)
+from ...webhook.transport.utils import (
     delivery_update,
     from_payment_app_id,
-    get_current_tax_app,
     get_meta_code_key,
     get_meta_description_key,
-    parse_list_payment_gateways_response,
-    parse_payment_action_response,
-    parse_tax_data,
 )
 from ...webhook.utils import get_webhooks_for_event
 from ..base_plugin import BasePlugin, ExcludedShippingMethod
@@ -3145,9 +3150,11 @@ class WebhookPlugin(BasePlugin):
                 response_data = None
                 error_msg = str(e)
 
+        data = response_data_model.data if response_data_model else None
+        data = cast(JSONValue, data)
         response_gateway[webhook.app.identifier] = PaymentGatewayData(
             app_identifier=webhook.app.identifier,
-            data=response_data_model.data if response_data_model else None,
+            data=data,
             error=error_msg,
         )
 
@@ -3595,7 +3602,7 @@ class WebhookPlugin(BasePlugin):
 
                 if response_data:
                     shipping_methods = parse_list_shipping_methods_response(
-                        response_data, webhook.app
+                        response_data, webhook.app, checkout.currency
                     )
                     methods.extend(shipping_methods)
         return methods

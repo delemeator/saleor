@@ -13,6 +13,7 @@ from ...core.db.connection import allow_writer
 from ...core.prices import quantize_price
 from ...core.taxes import zero_money
 from ...order.base_calculations import base_order_subtotal
+from ...order.lock_objects import order_qs_select_for_update
 from ...order.models import Order, OrderLine
 from .. import DiscountType
 from ..interface import VariantPromotionRuleInfo
@@ -43,8 +44,6 @@ def create_order_line_discount_objects(
         list[str],
     ],
 ) -> None | list["EditableOrderLineInfo"]:
-    from ...order.utils import order_qs_select_for_update
-
     if not discount_data or not lines_info:
         return None
 
@@ -254,6 +253,10 @@ def _create_order_line_discount_for_catalogue_promotion(
     line: OrderLine, rule_info: VariantPromotionRuleInfo, channel: Channel
 ):
     rule = rule_info.rule
+    if rule.reward_value_type is None or rule.reward_value is None:
+        raise ValueError(
+            "Reward value type and reward value cannot be NULL for catalogue promotions."
+        )
     rule_discount_amount = _get_rule_discount_amount(line, rule_info, channel)
     discount_name = get_discount_name(rule, rule_info.promotion)
     translated_name = get_discount_translated_name(rule_info)
@@ -278,8 +281,6 @@ def create_order_line_discount_objects_for_catalogue_promotions(
     rules_info: Iterable[VariantPromotionRuleInfo],
     channel: Channel,
 ) -> list["OrderLineDiscount"]:
-    from ...order.utils import order_qs_select_for_update
-
     line_discounts_to_create: list[OrderLineDiscount] = []
     for rule_info in rules_info:
         line_discount = _create_order_line_discount_for_catalogue_promotion(

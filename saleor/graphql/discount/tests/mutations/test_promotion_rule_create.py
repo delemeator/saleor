@@ -105,7 +105,7 @@ def test_promotion_rule_create_by_staff_user(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -178,7 +178,7 @@ def test_promotion_rule_create_by_app(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -245,7 +245,7 @@ def test_promotion_rule_create_by_customer(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
 
@@ -289,7 +289,7 @@ def test_promotion_rule_create_missing_predicate(
         for channel in [channel_USD, channel_PLN]
     ]
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -399,7 +399,7 @@ def test_promotion_rule_create_missing_reward_value_type(
         "productPredicate": {"ids": [graphene.Node.to_global_id("Product", product.id)]}
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
 
@@ -534,7 +534,7 @@ def test_promotion_rule_invalid_catalogue_predicate(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -595,7 +595,7 @@ def test_promotion_rule_invalid_order_predicate(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -722,7 +722,7 @@ def test_promotion_rule_create_fixed_reward_value_multiple_currencies(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -784,7 +784,7 @@ def test_promotion_rule_create_fixed_reward_no_channels(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -849,7 +849,7 @@ def test_promotion_rule_create_percentage_value_above_100(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("110")
+    reward_value = Decimal(110)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -910,7 +910,7 @@ def test_promotion_rule_create_clears_old_sale_id(
         ]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     rules_count = promotion.rules.count()
@@ -976,7 +976,7 @@ def test_promotion_rule_create_events(
             },
         ]
     }
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
 
@@ -1021,7 +1021,7 @@ def test_promotion_rule_create_serializable_decimal_in_predicate(
     catalogue_predicate = {
         "productPredicate": {"minimalPrice": {"range": {"gte": "25"}}}
     }
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
 
@@ -1057,7 +1057,7 @@ def test_promotion_rule_create_multiple_predicates(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     catalogue_predicate = {
@@ -1116,7 +1116,7 @@ def test_promotion_rule_create_mixed_predicates_order(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     reward_type = RewardTypeEnum.SUBTOTAL_DISCOUNT.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
@@ -1170,7 +1170,7 @@ def test_promotion_rule_create_mixed_predicates_catalogue(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     catalogue_predicate = {
@@ -1222,7 +1222,7 @@ def test_promotion_rule_create_missing_reward_type(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     order_predicate = {
@@ -1270,7 +1270,7 @@ def test_promotion_rule_create_reward_type_with_catalogue_predicate(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.FIXED.name
     reward_type = RewardTypeEnum.SUBTOTAL_DISCOUNT.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
@@ -1321,7 +1321,7 @@ def test_promotion_rule_create_order_predicate(
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     reward_type = RewardTypeEnum.SUBTOTAL_DISCOUNT.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
@@ -1380,7 +1380,7 @@ def test_promotion_rule_create_mixed_currencies_for_price_based_predicate(
     promotion = order_promotion_without_rules
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     reward_type = RewardTypeEnum.SUBTOTAL_DISCOUNT.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
@@ -1448,7 +1448,7 @@ def test_promotion_rule_create_with_metadata(
         "OR": [{"variantPredicate": {"metadata": [{"key": "test", "value": "test"}]}}]
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     promotion_id = graphene.Node.to_global_id("Promotion", catalogue_promotion.id)
 
@@ -1486,7 +1486,7 @@ def test_promotion_rule_create_exceeds_rules_number_limit(
     promotion = order_promotion_without_rules
     permission_group_manage_discounts.user_set.add(staff_api_client.user)
 
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     reward_type = RewardTypeEnum.SUBTOTAL_DISCOUNT.name
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
@@ -1756,7 +1756,7 @@ def test_promotion_rule_create_gift_promotion_with_reward_value(
     channel_id = graphene.Node.to_global_id("Channel", channel_USD.pk)
     name = "test promotion rule"
     reward_type = RewardTypeEnum.GIFT.name
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     promotion_id = graphene.Node.to_global_id("Promotion", promotion.id)
     order_predicate = {
         "discountedObjectPredicate": {"baseSubtotalPrice": {"range": {"gte": "100"}}}
@@ -1906,7 +1906,7 @@ def test_promotion_rule_create_invalid_promotion_id(
         }
     }
     name = "test promotion rule"
-    reward_value = Decimal("10")
+    reward_value = Decimal(10)
     reward_value_type = RewardValueTypeEnum.PERCENTAGE.name
     invalid_promotion_id = graphene.Node.to_global_id(
         "PromotionRule", promotion_rule.id

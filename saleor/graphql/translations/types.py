@@ -20,13 +20,8 @@ from ...product import models as product_models
 from ...shipping import models as shipping_models
 from ...site import models as site_models
 from ..attribute.dataloaders import AttributesByAttributeId, AttributeValueByIdLoader
-from ..channel import ChannelContext
-from ..core.context import get_database_connection_name
-from ..core.descriptions import (
-    ADDED_IN_321,
-    DEPRECATED_IN_3X_TYPE,
-    RICH_CONTENT,
-)
+from ..core.context import ChannelContext, get_database_connection_name
+from ..core.descriptions import ADDED_IN_321, DEPRECATED_IN_3X_TYPE, RICH_CONTENT
 from ..core.enums import LanguageCodeEnum
 from ..core.fields import JSONString, PermissionsField
 from ..core.tracing import traced_resolver
@@ -174,7 +169,7 @@ class AttributeTranslatableContent(ModelObjectType[attribute_models.Attribute]):
 
     @staticmethod
     def resolve_attribute(root: attribute_models.Attribute, _info):
-        return root
+        return ChannelContext(node=root, channel_slug=None)
 
     @staticmethod
     def resolve_attribute_id(root: attribute_models.Attribute, _info):
@@ -220,7 +215,7 @@ class AttributeValueTranslatableContent(
 
     @staticmethod
     def resolve_attribute_value(root: attribute_models.AttributeValue, _info):
-        return root
+        return ChannelContext(node=root, channel_slug=None)
 
     @staticmethod
     def resolve_attribute(root: attribute_models.AttributeValue, info):
@@ -263,6 +258,9 @@ class ProductVariantTranslatableContent(ModelObjectType[product_models.ProductVa
     )
     product_variant_id = graphene.ID(
         required=True, description="The ID of the product variant to translate."
+    )
+    product_variant_sku = graphene.String(
+        required=False, description="SKU of the product variant to translate."
     )
     name = graphene.String(
         required=True,
@@ -307,6 +305,10 @@ class ProductVariantTranslatableContent(ModelObjectType[product_models.ProductVa
     @staticmethod
     def resolve_product_variant_id(root: product_models.ProductVariant, _info):
         return graphene.Node.to_global_id("ProductVariant", root.id)
+
+    @staticmethod
+    def resolve_product_variant_sku(root: product_models.ProductVariant, _info):
+        return root.sku
 
 
 class ProductTranslation(BaseTranslationType[product_models.ProductTranslation]):
@@ -661,12 +663,15 @@ class PageTranslatableContent(ModelObjectType[page_models.Page]):
 
     @staticmethod
     def resolve_page(root: page_models.Page, info):
-        return (
+        page = (
             page_models.Page.objects.using(get_database_connection_name(info.context))
             .visible_to_user(info.context.user)
             .filter(pk=root.id)
             .first()
         )
+        if not page:
+            return None
+        return ChannelContext(page, channel_slug=None)
 
     @staticmethod
     def resolve_content_json(root: page_models.Page, _info):
