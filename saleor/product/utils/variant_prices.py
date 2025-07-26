@@ -9,14 +9,17 @@ from prices import Money
 
 from ...channel.models import Channel
 from ...core.taxes import zero_money
+from ...core.utils.events import call_event
 from ...discount import PromotionRuleInfo
 from ...discount.models import PromotionRule
 from ...discount.utils.promotion import (
     calculate_discounted_price_for_promotions,
     get_variants_to_promotion_rules_map,
 )
+from ...graphql.plugins.dataloaders import AnonymousPluginManagerLoader, SaleorContext
 from ..managers import ProductsQueryset, ProductVariantQueryset
 from ..models import (
+    Product,
     ProductChannelListing,
     ProductVariant,
     ProductVariantChannelListing,
@@ -139,6 +142,17 @@ def _update_or_create_listings(
             ),
             ["discount_amount"],
         )
+
+    manager = AnonymousPluginManagerLoader(SaleorContext()).load("Anonymous").get()
+
+    products = {listing.product for listing in changed_products_listings_to_update}
+    variants = {listing.variant for listing in changed_variants_listings_to_update}
+
+    for product in products:
+        call_event(manager.product_updated, product)
+
+    for variant in variants:
+        call_event(manager.product_variant_updated, variant)
 
 
 def _create_variant_listing_promotion_rule(variant_listing_promotion_rule_to_create):
