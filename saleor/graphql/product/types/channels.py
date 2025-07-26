@@ -336,6 +336,10 @@ class ProductVariantChannelListing(
         description="The channel to which the variant listing belongs.",
     )
     price = graphene.Field(Money, description="The price of the variant.")
+    discounted_price = graphene.Field(
+        Money,
+        description="The price of the variant after applying discounts.",
+    )
     cost_price = graphene.Field(Money, description="Cost price of the variant.")
     prior_price = graphene.Field(
         Money,

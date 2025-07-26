@@ -44,6 +44,10 @@ mutation UpdateProductVariantChannelListing(
                     amount
                     currency
                 }
+                discountedPrice {
+                    amount
+                    currency
+                }
                 margin
                 preorderThreshold {
                     quantity
