@@ -43,6 +43,7 @@ from ...attribute.types import (
     AssignedVariantAttribute,
     Attribute,
     AttributeCountableConnection,
+    AttributeValue,
     SelectedAttribute,
 )
 from ...channel import ChannelContext, ChannelQsContext
@@ -2044,3 +2045,4 @@ class ProductImage(BaseObjectType):
             .load((root.id, selected_size, format))
             .then(_resolve_url)
         )
+    

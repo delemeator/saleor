@@ -497,6 +497,21 @@ type Query {
     last: Int
   ): ProductCountableConnection @doc(category: "Products")
 
+  """Summary of attribute values for given filtering of products."""
+  productAttributeChoices(
+    """List of attributes to summarize for."""
+    attributeSlugs: [String]
+
+    """Filtering options for products."""
+    filter: ProductFilterInput
+
+    """Where filtering options."""
+    where: ProductWhereInput
+
+    """Slug of a channel for which the data should be returned."""
+    channel: String
+  ): [ProductAttributeChoices]
+
   """Look up a product type by ID."""
   productType(
     """ID of the product type."""
@@ -1472,7 +1487,7 @@ type Query {
   """
   customerGroups(
     """Filtering options for customer groups."""
-    filter: PermissionGroupFilterInput
+    filter: CustomerGroupFilterInput
 
     """Return the elements in the list that come before the specified cursor."""
     before: String
@@ -6634,7 +6649,9 @@ input ProductFilterInput @doc(category: "Products") {
   hasCategory: Boolean
   attributes: [AttributeInput!]
 
-  """Filter by variants having specific stock status."""
+  """
+  Filter by specific product stock status (considering all variant stocks combined).
+  """
   stockAvailability: StockAvailability
   stocks: ProductStockFilterInput
   search: String
@@ -6780,7 +6797,9 @@ input ProductWhereInput @doc(category: "Products") {
   """Filter by attributes associated with the product."""
   attributes: [AttributeInput!]
 
-  """Filter by variants having specific stock status."""
+  """
+  Filter by specific product stock status (considering all variant stocks combined).
+  """
   stockAvailability: StockAvailability
 
   """Filter by stock of the product variant."""
@@ -7217,6 +7236,9 @@ type ProductVariantChannelListing implements Node @doc(category: "Products") {
 
   """The price of the variant."""
   price: Money
+
+  """The price of the variant after applying discounts."""
+  discountedPrice: Money
 
   """Cost price of the variant."""
   costPrice: Money
@@ -7783,11 +7805,17 @@ input ProductVariantFilterInput @doc(category: "Products") {
   metadata: [MetadataFilter!]
   isPreorder: Boolean
   updatedAt: DateTimeRangeInput
+
+  """Filter by product variant stock status."""
+  stockAvailability: StockAvailability
 }
 
 input ProductVariantWhereInput @doc(category: "Products") {
   metadata: [MetadataFilter!]
   ids: [ID!]
+
+  """Filter by variant stock status."""
+  stockAvailability: StockAvailability
 
   """List of conditions that must be met."""
   AND: [ProductVariantWhereInput!]
@@ -9963,6 +9991,9 @@ type User implements Node & ObjectWithMetadata @doc(category: "Users") {
     """Slug of a channel for which the data should be returned."""
     channel: String!
   ): [StoredPaymentMethod!]
+
+  """List of customer groups assigned to the user."""
+  customerGroups: [CustomerGroup!]
 }
 
 """Checkout object."""
@@ -12356,6 +12387,55 @@ type PaymentSource @doc(category: "Payments") {
   metadata: [MetadataItem!]!
 }
 
+"""Represents customer group data."""
+type CustomerGroup implements Node {
+  """The ID of the customer group."""
+  id: ID!
+
+  """The name of the customer group."""
+  name: String!
+
+  """
+  List of customers in group
+  
+  Requires one of the following permissions: MANAGE_USERS.
+  """
+  customers(
+    """Return the elements in the list that come before the specified cursor."""
+    before: String
+
+    """Return the elements in the list that come after the specified cursor."""
+    after: String
+
+    """
+    Retrieve the first n elements from the list. Note that the system only allows fetching a maximum of 100 objects in a single query.
+    """
+    first: Int
+
+    """
+    Retrieve the last n elements from the list. Note that the system only allows fetching a maximum of 100 objects in a single query.
+    """
+    last: Int
+  ): UserCountableConnection
+}
+
+type UserCountableConnection @doc(category: "Users") {
+  """Pagination data for this connection."""
+  pageInfo: PageInfo!
+  edges: [UserCountableEdge!]!
+
+  """A total count of items in the collection."""
+  totalCount: Int
+}
+
+type UserCountableEdge @doc(category: "Users") {
+  """The item at the end of the edge."""
+  node: User!
+
+  """A cursor for use in pagination."""
+  cursor: String!
+}
+
 """Store the current and allowed usage."""
 type LimitInfo {
   """Defines the current resource usage."""
@@ -12542,6 +12622,19 @@ enum CollectionSortField @doc(category: "Products") {
   This option requires a channel filter to work as the values can vary between channels.
   """
   PUBLISHED_AT
+}
+
+type ProductAttributeChoices {
+  attribute: Attribute!
+
+  """List of attribute choices with their stats."""
+  choices: [ProductAttributeChoiceStats]!
+}
+
+type ProductAttributeChoiceStats {
+  """The number of products with this attribute choice."""
+  productCount: Int!
+  value: AttributeValue!
 }
 
 input ProductTypeFilterInput @doc(category: "Products") {
@@ -13357,55 +13450,6 @@ type PromotionRule implements Node @doc(category: "Discounts") {
   giftsLimit: Int
 }
 
-"""Represents customer group data."""
-type CustomerGroup implements Node {
-  """The ID of the customer group."""
-  id: ID!
-
-  """The name of the customer group."""
-  name: String!
-
-  """
-  List of customers in group
-  
-  Requires one of the following permissions: MANAGE_USERS.
-  """
-  customers(
-    """Return the elements in the list that come before the specified cursor."""
-    before: String
-
-    """Return the elements in the list that come after the specified cursor."""
-    after: String
-
-    """
-    Retrieve the first n elements from the list. Note that the system only allows fetching a maximum of 100 objects in a single query.
-    """
-    first: Int
-
-    """
-    Retrieve the last n elements from the list. Note that the system only allows fetching a maximum of 100 objects in a single query.
-    """
-    last: Int
-  ): UserCountableConnection
-}
-
-type UserCountableConnection @doc(category: "Users") {
-  """Pagination data for this connection."""
-  pageInfo: PageInfo!
-  edges: [UserCountableEdge!]!
-
-  """A total count of items in the collection."""
-  totalCount: Int
-}
-
-type UserCountableEdge @doc(category: "Users") {
-  """The item at the end of the edge."""
-  node: User!
-
-  """A cursor for use in pagination."""
-  cursor: String!
-}
-
 enum RewardValueTypeEnum @doc(category: "Discounts") {
   FIXED
   PERCENTAGE
@@ -14048,7 +14092,7 @@ type CustomerGroupCountableEdge @doc(category: "Users") {
   cursor: String!
 }
 
-input PermissionGroupFilterInput @doc(category: "Users") {
+input CustomerGroupFilterInput @doc(category: "Users") {
   search: String
   ids: [ID!]
 }
@@ -14108,6 +14152,11 @@ type GroupCountableEdge @doc(category: "Users") {
 
   """A cursor for use in pagination."""
   cursor: String!
+}
+
+input PermissionGroupFilterInput @doc(category: "Users") {
+  search: String
+  ids: [ID!]
 }
 
 input PermissionGroupSortingInput @doc(category: "Users") {
@@ -29360,6 +29409,15 @@ type CustomerCreate @doc(category: "Users") @webhookEventsInfo(asyncEvents: [CUS
 }
 
 input UserCreateInput @doc(category: "Users") {
+  """User language code."""
+  languageCode: LanguageCodeEnum
+
+  """External ID of the customer."""
+  externalReference: String
+
+  """User account is confirmed."""
+  isConfirmed: Boolean @deprecated(reason: "The user will be always set as unconfirmed. The confirmation will take place when the user sets the password.")
+
   """Billing address of the customer."""
   defaultBillingAddress: AddressInput
 
@@ -29394,15 +29452,6 @@ input UserCreateInput @doc(category: "Users") {
   Warning: never store sensitive information, including financial data such as credit card details.
   """
   privateMetadata: [MetadataInput!]
-
-  """User language code."""
-  languageCode: LanguageCodeEnum
-
-  """External ID of the customer."""
-  externalReference: String
-
-  """User account is confirmed."""
-  isConfirmed: Boolean @deprecated(reason: "The user will be always set as unconfirmed. The confirmation will take place when the user sets the password.")
 
   """
   URL of a view where users should be redirected to set the password. URL in RFC 1808 format.
@@ -29431,6 +29480,15 @@ type CustomerUpdate @doc(category: "Users") @webhookEventsInfo(asyncEvents: [CUS
 }
 
 input CustomerInput @doc(category: "Users") {
+  """User language code."""
+  languageCode: LanguageCodeEnum
+
+  """External ID of the customer."""
+  externalReference: String
+
+  """User account is confirmed."""
+  isConfirmed: Boolean
+
   """Billing address of the customer."""
   defaultBillingAddress: AddressInput
 
@@ -29466,14 +29524,11 @@ input CustomerInput @doc(category: "Users") {
   """
   privateMetadata: [MetadataInput!]
 
-  """User language code."""
-  languageCode: LanguageCodeEnum
+  """IDs of customer groups to which the user should be added."""
+  addCustomerGroups: [ID!]
 
-  """External ID of the customer."""
-  externalReference: String
-
-  """User account is confirmed."""
-  isConfirmed: Boolean
+  """IDs of customer groups from which the user should be removed."""
+  removeCustomerGroups: [ID!]
 }
 
 """

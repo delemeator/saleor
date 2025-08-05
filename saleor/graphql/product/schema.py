@@ -5,11 +5,18 @@ from ...permission.enums import ProductPermissions
 from ...permission.utils import has_one_of_permissions
 from ...product.models import ALL_PRODUCTS_PERMISSIONS
 from ...product.search import search_products
+from ..attribute.dataloaders import AttributeChoicesByProductIdsLoader
+from ..attribute.types import ProductAttributeChoices
 from ..channel import ChannelContext, ChannelQsContext
 from ..channel.dataloaders import ChannelBySlugLoader
 from ..channel.utils import get_default_channel_slug_or_graphql_error
 from ..core import ResolveInfo
-from ..core.connection import create_connection_slice, filter_connection_queryset
+from ..core.connection import (
+    create_connection_slice,
+    filter_connection_queryset,
+    filter_qs,
+    where_filter_qs,
+)
 from ..core.descriptions import (
     ADDED_IN_321,
     DEFAULT_DEPRECATION_REASON,
@@ -55,10 +62,12 @@ from .filters import (
     CategoryWhereInput,
     CollectionFilterInput,
     CollectionWhereInput,
+    ProductFilter,
     ProductFilterInput,
     ProductTypeFilterInput,
     ProductVariantFilterInput,
     ProductVariantWhereInput,
+    ProductWhere,
     ProductWhereInput,
 )
 from .mutations import (
@@ -272,6 +281,23 @@ class ProductQueries(graphene.ObjectType):
             f"{', '.join([p.name for p in ALL_PRODUCTS_PERMISSIONS])}."
         ),
         doc_category=DOC_CATEGORY_PRODUCTS,
+    )
+    product_attribute_choices = graphene.Field(
+        graphene.List(
+            ProductAttributeChoices, description="List of product attribute choices."
+        ),
+        attribute_slugs=graphene.Argument(
+            graphene.List(graphene.String),
+            description="List of attributes to summarize for.",
+            required=True,
+        ),
+        filter=ProductFilterInput(description="Filtering options for products."),
+        where=ProductWhereInput(description="Where filtering options."),
+        channel=graphene.String(
+            description="Slug of a channel for which the data should be returned.",
+            required=True,
+        ),
+        description=("Summary of attribute values for given filtering of products."),
     )
     product_type = BaseField(
         ProductType,
@@ -541,6 +567,53 @@ class ProductQueries(graphene.ObjectType):
                 .then(_resolve_products)
             )
         return _resolve_products(None)
+
+    @staticmethod
+    def resolve_product_attribute_choices(
+        _root,
+        info: ResolveInfo,
+        *args,
+        attribute_slugs,
+        channel,
+        filters=None,
+        where=None,
+        **kwargs,
+    ):
+        limited_channel_access = True
+        requestor = None
+
+        def _resolve_products(channel_obj):
+            qs = resolve_products(
+                info, requestor, channel_obj, limited_channel_access
+            ).qs
+
+            if filters:
+                qs = filter_qs(
+                    qs,
+                    args,
+                    filterset_class=ProductFilter,
+                    filter_input=filters,
+                    request=None,
+                    allow_replica=info.context.allow_replica,
+                )
+            if where:
+                qs = where_filter_qs(
+                    qs,
+                    args,
+                    filterset_class=ProductWhere,
+                    filter_input=where,
+                    request=None,
+                    allow_replica=info.context.allow_replica,
+                )
+            product_ids = list(qs.values_list("id", flat=True))
+
+            loader = AttributeChoicesByProductIdsLoader(info.context)
+            keys = [(tuple(product_ids), slug) for slug in attribute_slugs]
+            return loader.load_many(keys)
+
+        return (
+            ChannelBySlugLoader(info.context).load(str(channel)).then(_resolve_products)
+        )
 
     @staticmethod
     def resolve_product_type(_root, info: ResolveInfo, *, id):
