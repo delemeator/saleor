@@ -503,6 +503,5 @@ class ProductAttributeChoices(BaseObjectType):
     attribute = graphene.Field(Attribute, required=True)
     choices = graphene.List(
         ProductAttributeChoiceStats,
-        required=True,
         description="List of attribute choices with their stats.",
     )

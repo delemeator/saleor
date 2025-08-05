@@ -5,7 +5,6 @@ from ...permission.enums import ProductPermissions
 from ...permission.utils import has_one_of_permissions
 from ...product.models import ALL_PRODUCTS_PERMISSIONS
 from ...product.search import search_products
-from ..attribute.dataloaders import AttributeChoicesByProductIdsLoader
 from ..attribute.types import ProductAttributeChoices
 from ..channel import ChannelContext, ChannelQsContext
 from ..channel.dataloaders import ChannelBySlugLoader
@@ -14,8 +13,6 @@ from ..core import ResolveInfo
 from ..core.connection import (
     create_connection_slice,
     filter_connection_queryset,
-    filter_qs,
-    where_filter_qs,
 )
 from ..core.descriptions import (
     ADDED_IN_321,
@@ -62,12 +59,10 @@ from .filters import (
     CategoryWhereInput,
     CollectionFilterInput,
     CollectionWhereInput,
-    ProductFilter,
     ProductFilterInput,
     ProductTypeFilterInput,
     ProductVariantFilterInput,
     ProductVariantWhereInput,
-    ProductWhere,
     ProductWhereInput,
 )
 from .mutations import (
@@ -128,6 +123,7 @@ from .resolvers import (
     resolve_digital_content_by_id,
     resolve_digital_contents,
     resolve_product,
+    resolve_product_attribute_choices,
     resolve_product_type_by_id,
     resolve_product_types,
     resolve_product_variants,
@@ -573,46 +569,12 @@ class ProductQueries(graphene.ObjectType):
         _root,
         info: ResolveInfo,
         *args,
-        attribute_slugs,
-        channel,
-        filters=None,
-        where=None,
         **kwargs,
     ):
-        limited_channel_access = True
-        requestor = None
-
-        def _resolve_products(channel_obj):
-            qs = resolve_products(
-                info, requestor, channel_obj, limited_channel_access
-            ).qs
-
-            if filters:
-                qs = filter_qs(
-                    qs,
-                    args,
-                    filterset_class=ProductFilter,
-                    filter_input=filters,
-                    request=None,
-                    allow_replica=info.context.allow_replica,
-                )
-            if where:
-                qs = where_filter_qs(
-                    qs,
-                    args,
-                    filterset_class=ProductWhere,
-                    filter_input=where,
-                    request=None,
-                    allow_replica=info.context.allow_replica,
-                )
-            product_ids = list(qs.values_list("id", flat=True))
-
-            loader = AttributeChoicesByProductIdsLoader(info.context)
-            keys = [(tuple(product_ids), slug) for slug in attribute_slugs]
-            return loader.load_many(keys)
-
-        return (
-            ChannelBySlugLoader(info.context).load(str(channel)).then(_resolve_products)
+        return resolve_product_attribute_choices(
+            info,
+            *args,
+            **kwargs,
         )
 
     @staticmethod
