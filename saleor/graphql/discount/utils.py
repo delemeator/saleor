@@ -145,7 +145,7 @@ def _handle_category_predicate(
 ) -> ProductVariantQueryset:
     products = Product.objects.filter(id__in=variant_qs.values("product_id"))
     category_qs = where_filter_qs(
-        Category.objects.filter(Exists(products.filter(category_id=OuterRef("id")))),
+        Category.objects.all(),
         {},
         CategoryWhere,
         predicate_data,
