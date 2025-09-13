@@ -151,8 +151,11 @@ def _handle_category_predicate(
         predicate_data,
         None,
     )
+    category_qs_tree = Category.tree.get_queryset_descendants(
+        category_qs.using(variant_qs.db), include_self=True
+    )
     products = Product.objects.filter(
-        Exists(category_qs.filter(id=OuterRef("category_id")))
+        Exists(category_qs_tree.filter(id=OuterRef("category_id")))
     )
     return ProductVariant.objects.filter(
         Exists(products.filter(id=OuterRef("product_id")))
