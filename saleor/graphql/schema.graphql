@@ -21216,7 +21216,7 @@ input ProductVariantChannelListingAddInput @doc(category: "Products") {
   channelId: ID!
 
   """Price of the particular variant in channel."""
-  price: PositiveDecimal!
+  price: PositiveDecimal
 
   """Cost price of the variant in channel."""
   costPrice: PositiveDecimal
