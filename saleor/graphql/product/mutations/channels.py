@@ -384,9 +384,7 @@ class ProductChannelListingUpdate(BaseChannelListingMutation):
 
 class ProductVariantChannelListingAddInput(BaseInputObjectType):
     channel_id = graphene.ID(required=True, description="ID of a channel.")
-    price = PositiveDecimal(
-        required=True, description="Price of the particular variant in channel."
-    )
+    price = PositiveDecimal(description="Price of the particular variant in channel.")
     cost_price = PositiveDecimal(description="Cost price of the variant in channel.")
     prior_price = PositiveDecimal(
         description="Previous price of the variant in channel. Useful for providing "

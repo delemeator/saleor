@@ -7,6 +7,7 @@ from ...permission.utils import has_one_of_permissions
 from ...product import models
 from ...product.models import ALL_PRODUCTS_PERMISSIONS
 from ...product.search import search_products
+from ..attribute.types import ProductAttributeChoices
 from ..channel.dataloaders.by_self import ChannelBySlugLoader
 from ..channel.utils import get_default_channel_slug_or_graphql_error
 from ..core import ResolveInfo
@@ -118,6 +119,7 @@ from .resolvers import (
     resolve_digital_content_by_id,
     resolve_digital_contents,
     resolve_product,
+    resolve_product_attribute_choices,
     resolve_product_type_by_id,
     resolve_product_types,
     resolve_product_variants,
@@ -278,6 +280,23 @@ class ProductQueries(graphene.ObjectType):
             f"{', '.join([p.name for p in ALL_PRODUCTS_PERMISSIONS])}."
         ),
         doc_category=DOC_CATEGORY_PRODUCTS,
+    )
+    product_attribute_choices = graphene.Field(
+        graphene.List(
+            ProductAttributeChoices, description="List of product attribute choices."
+        ),
+        attribute_slugs=graphene.Argument(
+            graphene.List(graphene.String),
+            description="List of attributes to summarize for.",
+            required=True,
+        ),
+        filter=ProductFilterInput(description="Filtering options for products."),
+        where=ProductWhereInput(description="Where filtering options."),
+        channel=graphene.String(
+            description="Slug of a channel for which the data should be returned.",
+            required=True,
+        ),
+        description=("Summary of attribute values for given filtering of products."),
     )
     product_type = BaseField(
         ProductType,
@@ -553,6 +572,19 @@ class ProductQueries(graphene.ObjectType):
                 .then(_resolve_products)
             )
         return _resolve_products(None)
+
+    @staticmethod
+    def resolve_product_attribute_choices(
+        _root,
+        info: ResolveInfo,
+        *args,
+        **kwargs,
+    ):
+        return resolve_product_attribute_choices(
+            info,
+            *args,
+            **kwargs,
+        )
 
     @staticmethod
     def resolve_product_type(_root, info: ResolveInfo, *, id):

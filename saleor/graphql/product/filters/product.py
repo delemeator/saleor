@@ -128,7 +128,7 @@ class ProductFilter(MetadataFilterBase):
     stock_availability = EnumFilter(
         input_class=StockAvailability,
         method="filter_stock_availability",
-        help_text="Filter by variants having specific stock status.",
+        help_text="Filter by specific product stock status (considering all variant stocks combined).",
     )
     updated_at = ObjectTypeFilter(
         input_class=DateTimeRangeInput,
@@ -300,7 +300,7 @@ class ProductWhere(MetadataWhereFilterBase):
     stock_availability = EnumWhereFilter(
         input_class=StockAvailability,
         method="filter_stock_availability",
-        help_text="Filter by variants having specific stock status.",
+        help_text="Filter by specific product stock status (considering all variant stocks combined).",
     )
     stocks = ObjectTypeWhereFilter(
         input_class=ProductStockFilterInput,

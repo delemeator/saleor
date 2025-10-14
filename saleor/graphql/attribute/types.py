@@ -1679,3 +1679,18 @@ class ObjectWithAttributes(BaseInterface):
     class Meta:
         description = "An object with attributes." + ADDED_IN_322
         doc_category = DOC_CATEGORY_ATTRIBUTES
+
+
+class ProductAttributeChoiceStats(BaseObjectType):
+    product_count = graphene.Int(
+        required=True, description="The number of products with this attribute choice."
+    )
+    value = graphene.Field(AttributeValue, required=True)
+
+
+class ProductAttributeChoices(BaseObjectType):
+    attribute = graphene.Field(Attribute, required=True)
+    choices = graphene.List(
+        ProductAttributeChoiceStats,
+        description="List of attribute choices with their stats.",
+    )

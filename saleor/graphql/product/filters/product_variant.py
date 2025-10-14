@@ -37,6 +37,8 @@ from ...attribute.shared_filters import (
 from ...core.descriptions import ADDED_IN_322
 from ...core.doc_category import DOC_CATEGORY_PRODUCTS
 from ...core.filters import (
+    EnumFilter,
+    EnumWhereFilter,
     FilterInputObjectType,
     GlobalIDMultipleChoiceWhereFilter,
     ListObjectTypeFilter,
@@ -48,11 +50,16 @@ from ...core.filters import (
 )
 from ...core.filters.where_input import StringFilterInput, WhereInputObjectType
 from ...core.types import DateTimeRangeInput
+from ...product.enums import StockAvailability
 from ...utils.filters import (
     Number,
     filter_by_ids,
     filter_where_by_range_field,
     filter_where_by_value_field,
+)
+from .product_helpers import (
+    filter_variant_stock_availability,
+    where_filter_variant_stock_availability,
 )
 from .shared import filter_updated_at_range
 
@@ -701,6 +708,11 @@ class ProductVariantFilter(MetadataFilterBase):
     updated_at = ObjectTypeFilter(
         input_class=DateTimeRangeInput, method=filter_updated_at_range
     )
+    stock_availability = EnumFilter(
+        input_class=StockAvailability,
+        method="filter_stock_availability",
+        help_text="Filter by product variant stock status.",
+    )
 
     class Meta:
         model = ProductVariant
@@ -715,6 +727,9 @@ class ProductVariantFilter(MetadataFilterBase):
         )
         qs |= Q(Exists(products.filter(variants=OuterRef("pk"))))
         return queryset.filter(qs)
+
+    def filter_stock_availability(self, queryset, name, value):
+        return filter_variant_stock_availability(queryset, name, value, self.data)
 
 
 class ProductVariantWhere(MetadataWhereFilterBase):
@@ -734,6 +749,11 @@ class ProductVariantWhere(MetadataWhereFilterBase):
         method="filter_attributes",
         help_text="Filter by attributes associated with the variant." + ADDED_IN_322,
     )
+    stock_availability = EnumWhereFilter(
+        input_class=StockAvailability,
+        method="filter_stock_availability",
+        help_text="Filter by variant stock status.",
+    )
 
     class Meta:
         model = ProductVariant
@@ -752,6 +772,9 @@ class ProductVariantWhere(MetadataWhereFilterBase):
         if not value:
             return qs
         return filter_variants_by_attributes(qs, value)
+
+    def filter_stock_availability(self, queryset, name, value):
+        return where_filter_variant_stock_availability(queryset, name, value, self.data)
 
     def is_valid(self):
         if attributes := self.data.get("attributes"):

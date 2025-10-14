@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db.models import Exists, OuterRef, Sum
 
 from ...attribute import models as attribute_models
@@ -16,8 +18,18 @@ from ..attribute.dataloaders.assigned_attributes import (
     AttributesVisibleToCustomerByProductIdAndLimitLoader,
     AttributesVisibleToCustomerByProductVariantIdAndSelectionAndLimitLoader,
 )
+from ..attribute.dataloaders.attributes import (
+    AttributesBySlugLoader,
+    AttributeValueByIdLoader,
+)
+from ..attribute.types import ProductAttributeChoices, ProductAttributeChoiceStats
 from ..attribute.utils.shared import AssignedAttributeData
+from ..channel.dataloaders.by_self import ChannelBySlugLoader
 from ..core import ResolveInfo
+from ..core.connection import (
+    filter_qs,
+    where_filter_qs,
+)
 from ..core.context import (
     ChannelContext,
     ChannelQsContext,
@@ -28,6 +40,10 @@ from ..core.tracing import traced_resolver
 from ..core.utils import from_global_id_or_error
 from ..utils import get_user_or_app_from_context
 from ..utils.filters import filter_by_period
+from .filters.product import (
+    ProductFilter,
+    ProductWhere,
+)
 
 
 def resolve_categories(info: ResolveInfo, level=None):
@@ -372,3 +388,107 @@ def resolve_variant_attribute(root: ChannelContext[models.ProductVariant], info,
         .load((root.node.id, slug))
         .then(with_assigned_attribute_data)
     )
+
+
+def resolve_product_attribute_choices(
+    info: ResolveInfo,
+    channel,
+    attribute_slugs,
+    filter=None,
+    where=None,
+):
+    channel_obj = ChannelBySlugLoader(info.context).load(channel).get()
+    limited_channel_access = True
+    requestor = None
+    qs = resolve_products(info, requestor, channel_obj, limited_channel_access).qs
+
+    if filter:
+        qs = filter_qs(
+            qs,
+            {"channel": channel},
+            filterset_class=ProductFilter,
+            filter_input=filter,
+            request=None,
+            allow_replica=info.context.allow_replica,
+        )
+    if where:
+        qs = where_filter_qs(
+            qs,
+            {"channel": channel},
+            filterset_class=ProductWhere,
+            filter_input=where,
+            request=None,
+            allow_replica=info.context.allow_replica,
+        )
+    product_ids = list(qs.values_list("id", flat=True))
+
+    # Query product attribute values
+    product_rows = (
+        attribute_models.AssignedProductAttributeValue.objects.using(
+            get_database_connection_name(info.context)
+        )
+        .filter(product_id__in=product_ids, value__attribute__slug__in=attribute_slugs)
+        .values("value__attribute__slug", "value_id", "product_id")
+        .distinct()
+    )
+
+    # Query variant attribute values
+    variant_rows = (
+        attribute_models.AssignedVariantAttributeValue.objects.using(
+            get_database_connection_name(info.context)
+        )
+        .filter(
+            assignment__variant__product_id__in=product_ids,
+            value__attribute__slug__in=attribute_slugs,
+        )
+        .values("value__attribute__slug", "value_id", "assignment__variant__product_id")
+        .distinct()
+    )
+
+    all_value_ids = {row["value_id"] for row in product_rows}.union(
+        {row["value_id"] for row in variant_rows}
+    )
+
+    values = AttributeValueByIdLoader(info.context).batch_load(all_value_ids)
+    attributes = AttributesBySlugLoader(info.context).batch_load(attribute_slugs)
+
+    values_dict = {value.id: value for value in values if value}
+    attributes_dict = {
+        attribute.slug: attribute for attribute in attributes if attribute
+    }
+
+    # Group by value_id
+    value_to_products = defaultdict(set)
+    for row in product_rows:
+        value_to_products[row["value_id"]].add(row["product_id"])
+    for row in variant_rows:
+        value_to_products[row["value_id"]].add(row["assignment__variant__product_id"])
+
+    attribute_slug_to_values = defaultdict(set)
+    for row in product_rows:
+        if row["product_id"] in product_ids:
+            attribute_slug_to_values[row["value__attribute__slug"]].add(row["value_id"])
+    for row in variant_rows:
+        if row["assignment__variant__product_id"] in product_ids:
+            attribute_slug_to_values[row["value__attribute__slug"]].add(row["value_id"])
+
+    output = []
+    for slug in attribute_slugs:
+        attribute = attributes_dict.get(slug)
+        if not attribute:
+            continue
+
+        output.append(
+            ProductAttributeChoices(
+                attribute=ChannelContext(attribute, channel),
+                choices=[
+                    ProductAttributeChoiceStats(
+                        product_count=len(value_to_products[value_id]),
+                        value=ChannelContext(values_dict[value_id], channel),
+                    )
+                    for value_id in attribute_slug_to_values.get(slug, [])
+                    if value_id in values_dict
+                ],
+            )
+        )
+    return output

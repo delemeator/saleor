@@ -66,6 +66,14 @@ class PromotionRuleUpdateInput(PromotionRuleBaseInput):
             + PREVIEW_FEATURE
         ),
     )
+    add_customer_groups = NonNullList(
+        graphene.ID,
+        description=("List of customer group IDs to add."),
+    )
+    remove_customer_groups = NonNullList(
+        graphene.ID,
+        description=("List of customer group IDs to remove."),
+    )
 
 
 class PromotionRuleUpdate(DeprecatedModelMutation):
@@ -134,6 +142,18 @@ class PromotionRuleUpdate(DeprecatedModelMutation):
             error.code = PromotionRuleUpdateErrorCode.DUPLICATED_INPUT_ITEM.value
             raise ValidationError({"addGifts": error, "removeGifts": error})
 
+        error = check_for_duplicates(
+            data,
+            "add_customer_groups",
+            "remove_customer_groups",
+            error_class_field="customerGroups",
+        )
+        if error:
+            error.code = PromotionRuleUpdateErrorCode.DUPLICATED_INPUT_ITEM.value
+            raise ValidationError(
+                {"addCustomerGroups": error, "removeCustomerGroups": error}
+            )
+
         cleaned_input = super().clean_input(info, instance, data, **kwargs)
         errors: defaultdict[str, list[ValidationError]] = defaultdict(list)
         cleaned_input = clean_promotion_rule(
@@ -159,6 +179,10 @@ class PromotionRuleUpdate(DeprecatedModelMutation):
                 instance.gifts.remove(*remove_gifts)
             if add_gifts := cleaned_data.get("add_gifts"):
                 instance.gifts.add(*add_gifts)
+            if remove_customer_groups := cleaned_data.get("remove_customer_groups"):
+                instance.customer_groups.remove(*remove_customer_groups)
+            if add_customer_groups := cleaned_data.get("add_customer_groups"):
+                instance.customer_groups.add(*add_customer_groups)
 
     @classmethod
     def post_save_actions(

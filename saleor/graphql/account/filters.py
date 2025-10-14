@@ -249,6 +249,11 @@ class CustomerWhereInput(WhereInputObjectType):
         filterset_class = CustomerWhereFilterInput
 
 
+class CustomerGroupFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(method=filter_search)
+    ids = GlobalIDMultipleChoiceFilter(method=filter_by_id(account_types.CustomerGroup))
+
+
 class PermissionGroupFilter(django_filters.FilterSet):
     search = django_filters.CharFilter(method=filter_search)
     ids = GlobalIDMultipleChoiceFilter(method=filter_by_id(account_types.Group))
