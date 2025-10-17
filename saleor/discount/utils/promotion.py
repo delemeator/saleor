@@ -533,11 +533,13 @@ def get_variants_to_promotion_rules_map(
     ).filter(Exists(variant_qs.filter(id=OuterRef("productvariant_id"))))
 
     # fetch rules only for active promotions
-    rules = PromotionRule.objects.using(
-        settings.DATABASE_CONNECTION_REPLICA_NAME
-    ).filter(
-        Exists(promotions.filter(id=OuterRef("promotion_id"))),
-        Exists(promotion_rule_variants.filter(promotionrule_id=OuterRef("pk"))),
+    rules = (
+        PromotionRule.objects.using(settings.DATABASE_CONNECTION_REPLICA_NAME)
+        .filter(
+            Exists(promotions.filter(id=OuterRef("promotion_id"))),
+            Exists(promotion_rule_variants.filter(promotionrule_id=OuterRef("pk"))),
+        )
+        .prefetch_related("customer_groups")
     )
 
     if customer_group_qs:
