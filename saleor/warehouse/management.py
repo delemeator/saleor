@@ -1,4 +1,5 @@
 import math
+import os
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, NamedTuple, cast
@@ -97,6 +98,11 @@ def allocate_stocks(
     for order line, until allocated all required quantity for the order line.
     If there is less quantity in stocks then rise InsufficientStock exception.
     """
+
+    # WARNING: We disable track allocation as it does not follow our allocation strategies
+    if os.getenv("ALLOCATE_STOCKS", "true") == "false":
+        return
+
     # allocation only applied to order lines with variants with track inventory
     # set to True
     order_lines_info = get_order_lines_with_track_inventory(order_lines_info)
