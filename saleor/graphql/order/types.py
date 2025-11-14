@@ -42,6 +42,7 @@ from ...permission.auth_filters import AuthorizationFilters, is_app, is_staff_us
 from ...permission.enums import (
     AccountPermissions,
     AppPermission,
+    CheckoutPermissions,
     OrderPermissions,
     PaymentPermissions,
     ProductPermissions,
@@ -2556,6 +2557,7 @@ class Order(SyncWebhookControlContextModelObjectType[ModelObjectType[models.Orde
                 AccountPermissions.MANAGE_USERS,
                 OrderPermissions.MANAGE_ORDERS,
                 PaymentPermissions.HANDLE_PAYMENTS,
+                CheckoutPermissions.HANDLE_TAXES,
             )
             return user
 
@@ -2581,10 +2583,16 @@ class Order(SyncWebhookControlContextModelObjectType[ModelObjectType[models.Orde
                     if prices_entered_with_tax
                     else order.shipping_price_net
                 )
+                shipping_method_metadata = order.shipping_method_metadata or {}
+                shipping_method_private_metadata = (
+                    order.shipping_method_private_metadata or {}
+                )
                 return ShippingMethodData(
                     id=external_app_shipping_id,
                     name=order.shipping_method_name,
                     price=price,
+                    metadata=shipping_method_metadata,
+                    private_metadata=shipping_method_private_metadata,
                 )
 
             return tax_config.then(with_tax_config)

@@ -1,3 +1,4 @@
+import datetime
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -35,29 +36,35 @@ def create_or_update_discount_objects_from_promotion_for_checkout(
     lines_info: list["CheckoutLineInfo"],
     database_connection_name: str = settings.DATABASE_CONNECTION_DEFAULT_NAME,
 ):
-    create_checkout_line_discount_objects_for_catalogue_promotions(
-        checkout_info, lines_info
+    soonest_catalogue_promotion_end_date = (
+        create_checkout_line_discount_objects_for_catalogue_promotions(
+            checkout_info, lines_info
+        )
     )
-    create_checkout_discount_objects_for_order_promotions(
+    order_promotion_end_date = create_checkout_discount_objects_for_order_promotions(
         checkout_info, lines_info, database_connection_name=database_connection_name
     )
+    if soonest_catalogue_promotion_end_date and order_promotion_end_date:
+        return min(soonest_catalogue_promotion_end_date, order_promotion_end_date)
+    return soonest_catalogue_promotion_end_date or order_promotion_end_date
 
 
 def create_checkout_line_discount_objects_for_catalogue_promotions(
     checkout_info: "CheckoutInfo",
     lines_info: list["CheckoutLineInfo"],
-):
+) -> datetime.datetime | None:
     discount_data = prepare_checkout_line_discount_objects_for_catalogue_promotions(
         checkout_info, lines_info
     )
     if not discount_data or not lines_info:
-        return
+        return None
 
     (
         discounts_to_create_inputs,
         discounts_to_update,
         discount_to_remove,
         updated_fields,
+        soonest_end_date,
     ) = discount_data
 
     new_line_discounts = []
@@ -95,6 +102,7 @@ def create_checkout_line_discount_objects_for_catalogue_promotions(
     update_line_info_cached_discounts(
         lines_info, new_line_discounts, discounts_to_update, discount_ids_to_remove
     )
+    return soonest_end_date
 
 
 def filter_relevant_rules(
@@ -118,13 +126,21 @@ def prepare_checkout_line_discount_objects_for_catalogue_promotions(
     checkout_info: "CheckoutInfo",
     lines_info: list["CheckoutLineInfo"],
 ) -> (
-    tuple[list[dict], list[CheckoutLineDiscount], list[CheckoutLineDiscount], list[str]]
+    tuple[
+        list[dict],
+        list[CheckoutLineDiscount],
+        list[CheckoutLineDiscount],
+        list[str],
+        datetime.datetime | None,
+    ]
     | None
 ):
     line_discounts_to_create_inputs: list[dict] = []
     line_discounts_to_update: list[CheckoutLineDiscount] = []
     line_discounts_to_remove: list[CheckoutLineDiscount] = []
     updated_fields: list[str] = []
+    soonest_end_date = None
+    applied_promotions_end_dates = []
 
     user = checkout_info.user
     user_groups_ids = set()
@@ -184,6 +200,9 @@ def prepare_checkout_line_discount_objects_for_catalogue_promotions(
                 reverse=True,
             )[0]
             rule = rule_info.rule
+            promotion = rule_info.promotion
+            if promotion.end_date:
+                applied_promotions_end_dates.append(promotion.end_date)
             rule_discount_amount = _get_rule_discount_amount(
                 line, rule_info, line_info.channel
             )
@@ -218,11 +237,15 @@ def prepare_checkout_line_discount_objects_for_catalogue_promotions(
             # Fallback for unlike mismatch between discount_amount and rules_info
             line_discounts_to_remove.extend(discounts_to_update)
 
+    if applied_promotions_end_dates:
+        soonest_end_date = min(applied_promotions_end_dates)
+
     return (
         line_discounts_to_create_inputs,
         line_discounts_to_update,
         line_discounts_to_remove,
         updated_fields,
+        soonest_end_date,
     )
 
 
@@ -241,11 +264,12 @@ def create_checkout_discount_objects_for_order_promotions(
     # Discount from order rules is applied only when the voucher is not set
     if checkout.voucher_code:
         _clear_checkout_discount(checkout_info, lines_info, save)
-        return
+        return None
 
     (
         gift_promotion_applied,
         discount_object,
+        promotion_end_date,
     ) = create_discount_objects_for_order_promotions(
         checkout,
         lines_info,
@@ -256,7 +280,7 @@ def create_checkout_discount_objects_for_order_promotions(
     )
     if not gift_promotion_applied and not discount_object:
         _clear_checkout_discount(checkout_info, lines_info, save)
-        return
+        return None
 
     if discount_object:
         checkout_info.discounts = [discount_object]
@@ -272,6 +296,7 @@ def create_checkout_discount_objects_for_order_promotions(
                     "translated_discount_name",
                 ]
             )
+    return promotion_end_date
 
 
 def _set_checkout_base_prices(checkout_info, lines_info):

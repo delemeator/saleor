@@ -87,7 +87,7 @@ class Checkout(models.Model):
         max_length=255, null=True, default=None, blank=True, editable=False
     )
     external_shipping_method_id = models.CharField(
-        max_length=512, null=True, default=None, blank=True, editable=False
+        max_length=1024, null=True, default=None, blank=True, editable=False
     )
 
     collection_point = models.ForeignKey(
@@ -194,6 +194,9 @@ class Checkout(models.Model):
     )
 
     price_expiration = models.DateTimeField(default=timezone.now)
+    # Expiration time of the applied discounts.
+    # Decides if the discounts are updated before tax recalculation.
+    discount_expiration = models.DateTimeField(default=timezone.now)
 
     discount_amount = models.DecimalField(
         max_digits=settings.DEFAULT_MAX_DIGITS,

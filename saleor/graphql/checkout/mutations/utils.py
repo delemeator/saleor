@@ -490,7 +490,10 @@ def check_permissions_for_custom_prices(app, lines):
     if any("price" in line for line in lines) and (
         not app or not app.has_perm(CheckoutPermissions.HANDLE_CHECKOUTS)
     ):
-        raise PermissionDenied(permissions=[CheckoutPermissions.HANDLE_CHECKOUTS])
+        raise PermissionDenied(
+            message="Setting the custom price is allowed only for apps with `MANAGE_CHECKOUTS` permission.",
+            permissions=[CheckoutPermissions.HANDLE_CHECKOUTS],
+        )
 
 
 def find_line_id_when_variant_parameter_used(
@@ -581,9 +584,7 @@ def apply_gift_reward_if_applicable_on_checkout_creation(
         currency=checkout.currency,
     )
     with transaction.atomic():
-        line, _line_created = create_gift_line(
-            checkout, gift_listing, line_discount_data
-        )
+        line = create_gift_line(checkout, gift_listing, line_discount_data)
         CheckoutLineDiscount.objects.create(line=line, **asdict(line_discount_data))
 
 

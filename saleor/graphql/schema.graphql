@@ -3067,10 +3067,31 @@ type AppExtension implements Node @doc(category: "Apps") {
   url: String!
 
   """Place where given extension will be mounted."""
-  mount: AppExtensionMountEnum!
+  mount: AppExtensionMountEnum! @deprecated(reason: "Use `mountName` instead.")
 
   """Type of way how app extension will be opened."""
-  target: AppExtensionTargetEnum!
+  target: AppExtensionTargetEnum! @deprecated(reason: "Use `targetName` instead.")
+
+  """
+  Name of the extension mount point in the dashboard. Replaces `mount`
+  
+  Added in Saleor 3.22.
+  """
+  mountName: String!
+
+  """
+  Name of the extension target in the dashboard. Replaces `target`
+  
+  Added in Saleor 3.22.
+  """
+  targetName: String!
+
+  """
+  App extension settings. Replaces `options` field.
+  
+  Added in Saleor 3.22.
+  """
+  settings: JSON!
 
   """The app assigned to app extension."""
   app: App!
@@ -3083,7 +3104,7 @@ type AppExtension implements Node @doc(category: "Apps") {
   
   Added in Saleor 3.22.
   """
-  options: AppExtensionPossibleOptions
+  options: AppExtensionPossibleOptions @deprecated(reason: "Use `settings` field instead.")
 }
 
 """All places where app extension can be mounted."""
@@ -3137,6 +3158,7 @@ enum AppExtensionMountEnum @doc(category: "Apps") {
   MENU_OVERVIEW_CREATE
   MENU_OVERVIEW_MORE_ACTIONS
   MENU_DETAILS_MORE_ACTIONS
+  TRANSLATIONS_MORE_ACTIONS
 }
 
 """
@@ -3152,18 +3174,20 @@ enum AppExtensionTargetEnum @doc(category: "Apps") {
   WIDGET
 }
 
+scalar JSON
+
 union AppExtensionPossibleOptions = AppExtensionOptionsWidget | AppExtensionOptionsNewTab
 
 """Represents the options for an app extension."""
 type AppExtensionOptionsWidget @doc(category: "Apps") {
   """Options for displaying a Widget"""
-  widgetTarget: WidgetTargetOptions
+  widgetTarget: WidgetTargetOptions @deprecated(reason: "Use `settings` field directly.")
 }
 
 """Represents the WIDGET target options for an app extension."""
 type WidgetTargetOptions @doc(category: "Apps") {
   """HTTP method for Widget target (GET or POST)"""
-  method: HttpMethod!
+  method: HttpMethod! @deprecated(reason: "Use `settings` field directly.")
 }
 
 enum HttpMethod {
@@ -3174,13 +3198,13 @@ enum HttpMethod {
 """Represents the options for an app extension."""
 type AppExtensionOptionsNewTab @doc(category: "Apps") {
   """Options controlling behavior of the NEW_TAB extension target"""
-  newTabTarget: NewTabTargetOptions
+  newTabTarget: NewTabTargetOptions @deprecated(reason: "Use `settings` field directly.")
 }
 
 """Represents the NEW_TAB target options for an app extension."""
 type NewTabTargetOptions @doc(category: "Apps") {
   """HTTP method for New Tab target (GET or POST)"""
-  method: HttpMethod!
+  method: HttpMethod! @deprecated(reason: "Use `settings` field directly.")
 }
 
 """Represents the app's brand data."""
@@ -12758,8 +12782,6 @@ enum TokenizedPaymentFlowEnum @doc(category: "Payments") {
   INTERACTIVE
 }
 
-scalar JSON
-
 """Represents an problem in the checkout."""
 union CheckoutProblem = CheckoutLineProblemInsufficientStock | CheckoutLineProblemVariantNotAvailable
 
@@ -14947,8 +14969,25 @@ type AppExtensionCountableEdge @doc(category: "Apps") {
 }
 
 input AppExtensionFilterInput @doc(category: "Apps") {
-  mount: [AppExtensionMountEnum!]
-  target: AppExtensionTargetEnum
+  """DEPRECATED: Use `mountName` instead."""
+  mount: [AppExtensionMountEnum!] @deprecated
+
+  """DEPRECATED: Use `targetName` instead."""
+  target: AppExtensionTargetEnum @deprecated
+
+  """
+  Plain-text mount name (case insensitive)
+  
+  Added in Saleor 3.22.
+  """
+  mountName: String
+
+  """
+  Plain-text target name (case insensitive)
+  
+  Added in Saleor 3.22.
+  """
+  targetName: String
 }
 
 """Represents address validation rules for a country."""
@@ -30010,10 +30049,31 @@ type AppManifestExtension @doc(category: "Apps") {
   url: String!
 
   """Place where given extension will be mounted."""
-  mount: AppExtensionMountEnum!
+  mount: AppExtensionMountEnum! @deprecated(reason: "Use `mountName` instead.")
 
   """Type of way how app extension will be opened."""
-  target: AppExtensionTargetEnum!
+  target: AppExtensionTargetEnum! @deprecated(reason: "Use `targetName` instead.")
+
+  """
+  Name of the extension mount point in the dashboard. Replaces `mount`
+  
+  Added in Saleor 3.22.
+  """
+  mountName: String!
+
+  """
+  Name of the extension target in the dashboard. Replaces `target`
+  
+  Added in Saleor 3.22.
+  """
+  targetName: String!
+
+  """
+  JSON object with settings for this extension.
+  
+  Added in Saleor 3.22.
+  """
+  settings: JSON!
 }
 
 type AppManifestWebhook @doc(category: "Apps") {
