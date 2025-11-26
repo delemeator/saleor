@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import (
@@ -112,6 +113,10 @@ def check_stock_quantity(
     If so - returns None. If there is less stock then required raise InsufficientStock
     exception.
     """
+
+    if os.getenv("ALLOCATE_STOCKS", "true") == "false":
+        return
+
     if variant.track_inventory:
         stocks = Stock.objects.using(
             database_connection_name
