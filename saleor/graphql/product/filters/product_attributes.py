@@ -1,6 +1,7 @@
 import datetime
 import math
 from collections import defaultdict
+from decimal import Decimal
 from typing import Literal, TypedDict
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
@@ -133,7 +134,9 @@ def _clean_product_attributes_range_filter_input(
         attr_pk = attributes_map[attr_name]
         attr_values = values_map[attr_name]
         matching_values = [
-            value for value in attr_values.keys() if gte <= value and lte >= value
+            value
+            for value in attr_values.keys()
+            if gte <= value + 1e-6 and lte >= value - 1e-6
         ]
         queries[attr_pk] = []
         for value in matching_values:

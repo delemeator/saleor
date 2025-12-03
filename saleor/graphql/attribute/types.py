@@ -41,8 +41,8 @@ from ..core.types import (
     BaseObjectType,
     DateRangeInput,
     DateTimeRangeInput,
+    DecimalRangeInput,
     File,
-    IntRangeInput,
     NonNullList,
 )
 from ..core.types.context import ChannelContextType, ChannelContextTypeForObjectType
@@ -574,7 +574,7 @@ class AttributeInput(BaseInputObjectType):
         ),
     )
     values_range = graphene.Field(
-        IntRangeInput,
+        DecimalRangeInput,
         required=False,
         description=(
             AttributeValueDescriptions.VALUES_RANGE

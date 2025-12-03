@@ -199,6 +199,113 @@ def test_products_query_with_filter_numeric_attributes(
 
 
 @pytest.mark.parametrize(
+    ("gte", "lte", "expected_products_index"),
+    [
+        (None, 8, [1, 2]),
+        (5, 8, [1, 2]),
+        (5.35, 5.5, [2]),
+        (5.2, 5.5, [1, 2]),
+        (5.3, 5.3, [1]),
+        (5.0, 5.1, []),
+        (5.6, 8, []),
+        (5.5, None, [0, 2]),
+        (None, 5.3, [1]),
+    ],
+)
+def test_products_query_with_filter_decimal_numeric_attributes(
+    gte,
+    lte,
+    expected_products_index,
+    staff_api_client,
+    product,
+    category,
+    numeric_attribute,
+    permission_manage_products,
+):
+    # given
+    product.product_type.product_attributes.add(numeric_attribute)
+    associate_attribute_values_to_instance(
+        product,
+        {numeric_attribute.id: list(numeric_attribute.values.all())},
+    )
+
+    product_type = ProductType.objects.create(
+        name="Custom Type",
+        slug="custom-type",
+        kind=ProductTypeKind.NORMAL,
+        has_variants=True,
+        is_shipping_required=True,
+    )
+    numeric_attribute.product_types.add(product_type)
+
+    second_product = Product.objects.create(
+        name="Second product",
+        slug="second-product",
+        product_type=product_type,
+        category=category,
+    )
+    attr_value = AttributeValue.objects.create(
+        attribute=numeric_attribute, name="5.3", slug="5_3", numeric=5.3
+    )
+
+    associate_attribute_values_to_instance(
+        second_product,
+        {numeric_attribute.id: [attr_value]},
+    )
+
+    third_product = Product.objects.create(
+        name="Third product",
+        slug="third-product",
+        product_type=product_type,
+        category=category,
+    )
+    attr_value = AttributeValue.objects.create(
+        attribute=numeric_attribute, name="5.5", slug="5_5", numeric=5.5
+    )
+
+    associate_attribute_values_to_instance(
+        third_product,
+        {numeric_attribute.id: [attr_value]},
+    )
+
+    second_product.refresh_from_db()
+    third_product.refresh_from_db()
+    products_instances = [product, second_product, third_product]
+    products_ids = [
+        graphene.Node.to_global_id("Product", p.pk) for p in products_instances
+    ]
+    values_range = {}
+    if gte:
+        values_range["gte"] = gte
+    if lte:
+        values_range["lte"] = lte
+    variables = {
+        "filter": {
+            "attributes": [
+                {"slug": numeric_attribute.slug, "valuesRange": values_range}
+            ]
+        }
+    }
+
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+
+    # when
+    response = staff_api_client.post_graphql(QUERY_PRODUCTS_WITH_FILTER, variables)
+    content = get_graphql_content(response)
+
+    # then
+    products = content["data"]["products"]["edges"]
+
+    assert len(products) == len(expected_products_index)
+    assert {product["node"]["id"] for product in products} == {
+        products_ids[index] for index in expected_products_index
+    }
+    assert {product["node"]["name"] for product in products} == {
+        products_instances[index].name for index in expected_products_index
+    }
+
+
+@pytest.mark.parametrize(
     ("filter_value", "expected_products_index"),
     [
         (False, [0, 1]),
