@@ -546,6 +546,14 @@ class ProductVariantChannelListing(models.Model):
         through="product.VariantChannelListingPromotionRule",
         blank=True,
     )
+    applied_rule = models.ForeignKey(
+        PromotionRule,
+        related_name="applied_variant_listings",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The promotion rule that was applied to get the discounted price.",
+    )
 
     preorder_quantity_threshold = models.IntegerField(blank=True, null=True)
 

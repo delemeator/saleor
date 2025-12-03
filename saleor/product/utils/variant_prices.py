@@ -284,9 +284,15 @@ def _get_discounted_variants_prices_for_promotions(
         discounted_variant_price = variant_listing.price
         rule_ids_to_keep = {rule_id for rule_id, _ in customer_group_discounts}
 
-        rule_id = None
+        applied_rule = None
         if applied_discount:
             rule_id, discount = applied_discount
+            variant_listing_rule = variant_listing_to_listing_rule_per_rule_map[
+                variant_listing.id
+            ].get(rule_id)
+            if variant_listing_rule:
+                applied_rule = variant_listing_rule.promotion_rule
+
             discounted_variant_price -= discount
             discounted_variant_price = max(
                 discounted_variant_price, zero_money(discounted_variant_price.currency)
@@ -314,8 +320,12 @@ def _get_discounted_variants_prices_for_promotions(
                 variant_listing_promotion_rule_to_create,
             )
 
-        if variant_listing.discounted_price != discounted_variant_price:
+        if (
+            variant_listing.discounted_price != discounted_variant_price
+            or variant_listing.applied_rule != applied_rule
+        ):
             variant_listing.discounted_price_amount = discounted_variant_price.amount
+            variant_listing.applied_rule = applied_rule
             variants_listings_to_update.append(variant_listing)
 
         VariantChannelListingPromotionRule.objects.filter(

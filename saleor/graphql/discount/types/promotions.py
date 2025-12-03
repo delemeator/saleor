@@ -183,6 +183,48 @@ class PromotionRule(ModelObjectType[models.PromotionRule]):
         return GiftsByPromotionRuleIDLoader(info.context).load(root.id).then(with_gifts)
 
 
+class PromotionPublic(ModelObjectType[models.Promotion]):
+    id = graphene.GlobalID(required=True)
+    name = graphene.String(required=True, description="Name of the promotion.")
+    type = PromotionTypeEnum(
+        description=(
+            "The type of the promotion. Implicate if the discount is applied on "
+            "catalogue or order level." + ADDED_IN_319 + PREVIEW_FEATURE
+        )
+    )
+    description = JSON(description="Description of the promotion.")
+    start_date = DateTime(required=True, description="Start date of the promotion.")
+    end_date = DateTime(description="End date of the promotion.")
+    created_at = DateTime(required=True, description="Date time of promotion creation.")
+    updated_at = DateTime(
+        required=True, description="Date time of last update of promotion."
+    )
+    translation = TranslationField(PromotionTranslation, type_name="promotion")
+
+    class Meta:
+        description = "Represents publicly available information about the promotion"
+        model = models.Promotion
+        doc_category = DOC_CATEGORY_DISCOUNTS
+
+
+class PromotionRulePublic(ModelObjectType[models.PromotionRule]):
+    id = graphene.GlobalID(required=True)
+    promotion = graphene.Field(
+        Promotion, description="Promotion to which the rule belongs."
+    )
+
+    class Meta:
+        description = (
+            "Represents publicly available information about the promotion rule."
+        )
+        model = models.PromotionRule
+        doc_category = DOC_CATEGORY_DISCOUNTS
+
+    @staticmethod
+    def resolve_promotion(root: models.PromotionRule, info: ResolveInfo):
+        return PromotionByIdLoader(info.context).load(root.promotion_id)
+
+
 class PromotionCountableConnection(CountableConnection):
     class Meta:
         doc_category = DOC_CATEGORY_DISCOUNTS
