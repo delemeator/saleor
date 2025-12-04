@@ -97,6 +97,7 @@ from ...core.utils import from_global_id_or_error
 from ...core.validators import (
     validate_one_of_args_is_in_query,
 )
+from ...discount.types.promotions import PromotionRulePublic
 from ...meta.types import ObjectWithMetadata
 from ...order.dataloaders import (
     OrderByIdLoader,
@@ -217,6 +218,11 @@ class VariantPricingInfo(BasePricingInfo):
         TaxedMoney, description="The price prior to discount." + ADDED_IN_321
     )
 
+    applied_rule = graphene.Field(
+        PromotionRulePublic,
+        description="The promotion rule that was applied to the variant.",
+    )
+
     # deprecated
     discount_local_currency = graphene.Field(
         TaxedMoney,
@@ -232,6 +238,7 @@ class VariantPricingInfo(BasePricingInfo):
     class Meta:
         doc_category = DOC_CATEGORY_PRODUCTS
         description = "Represents availability of a variant in the storefront."
+        model = models.ProductVariantChannelListing
 
 
 class ProductPricingInfo(BasePricingInfo):
@@ -724,7 +731,10 @@ class ProductVariant(ChannelContextType[models.ProductVariant]):
                             tax_rate=tax_rate,
                         )
                         return (
-                            VariantPricingInfo(**asdict(availability))
+                            VariantPricingInfo(
+                                **asdict(availability),
+                                applied_rule=variant_channel_listing.applied_rule,
+                            )
                             if availability
                             else None
                         )
