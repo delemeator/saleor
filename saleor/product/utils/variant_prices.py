@@ -128,7 +128,7 @@ def _update_or_create_listings(
     if changed_variants_listings_to_update:
         ProductVariantChannelListing.objects.bulk_update(
             sorted(changed_variants_listings_to_update, key=lambda listing: listing.id),
-            ["discounted_price_amount"],
+            ["discounted_price_amount", "applied_rule"],
         )
     if changed_variant_listing_promotion_rule_to_create:
         _create_variant_listing_promotion_rule(
