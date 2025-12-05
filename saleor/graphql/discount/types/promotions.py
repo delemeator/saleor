@@ -210,7 +210,7 @@ class PromotionPublic(ModelObjectType[models.Promotion]):
 class PromotionRulePublic(ModelObjectType[models.PromotionRule]):
     id = graphene.GlobalID(required=True)
     promotion = graphene.Field(
-        Promotion, description="Promotion to which the rule belongs."
+        PromotionPublic, description="Promotion to which the rule belongs."
     )
 
     class Meta:
