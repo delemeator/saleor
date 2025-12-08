@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -578,8 +579,10 @@ class PromotionsByCustomerGroupsAndChannelLoader(
             key_to_promo_ids.append(valid_pids)
             all_found_promo_ids.update(valid_pids)
 
-        promotions = Promotion.objects.using(self.database_connection_name).in_bulk(
-            all_found_promo_ids
+        promotions = (
+            Promotion.objects.using(self.database_connection_name)
+            .active(datetime.now(UTC))
+            .in_bulk(all_found_promo_ids)
         )
 
         results = []

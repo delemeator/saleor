@@ -696,6 +696,7 @@ QUERY_ME_WITH_PROMOTIONS = """
             promotions(channel: $channel) {
                 id
                 name
+                translation(languageCode: PL) { name }
                 rewardStats {
                     fixedMin
                     fixedMax

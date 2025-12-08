@@ -217,7 +217,11 @@ class PromotionPublic(ModelObjectType[models.Promotion]):
     updated_at = DateTime(
         required=True, description="Date time of last update of promotion."
     )
-    translation = TranslationField(PromotionTranslation, type_name="promotion")
+    translation = TranslationField(
+        PromotionTranslation,
+        type_name="promotion",
+        resolver=ChannelContextType.resolve_translation,
+    )
 
     reward_stats = graphene.Field(
         PromotionRewardStats,
