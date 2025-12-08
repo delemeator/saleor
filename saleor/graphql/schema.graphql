@@ -7874,7 +7874,10 @@ type PromotionRulePublic @doc(category: "Discounts") {
   id: ID!
 
   """Promotion to which the rule belongs."""
-  promotion: PromotionPublic
+  promotion(
+    """Channel slug."""
+    channel: String
+  ): PromotionPublic
 }
 
 """Represents publicly available information about the promotion"""
@@ -7913,6 +7916,9 @@ type PromotionPublic @doc(category: "Discounts") {
     """A language code to return the translation for promotion."""
     languageCode: LanguageCodeEnum!
   ): PromotionTranslation
+
+  """Statistics about the rewards defined in this promotion's rules."""
+  rewardStats: PromotionRewardStats
 }
 
 enum PromotionTypeEnum @doc(category: "Discounts") {
@@ -7967,6 +7973,20 @@ type PromotionTranslatableContent implements Node @doc(category: "Discounts") {
     """A language code to return the translation for promotion."""
     languageCode: LanguageCodeEnum!
   ): PromotionTranslation
+}
+
+type PromotionRewardStats {
+  """The minimum fixed reward amount defined in this promotion's rules."""
+  fixedMin: Float
+
+  """The maximum fixed reward amount defined in this promotion's rules."""
+  fixedMax: Float
+
+  """The minimum percentage reward defined in this promotion's rules."""
+  percentageMin: Float
+
+  """The maximum percentage reward defined in this promotion's rules."""
+  percentageMax: Float
 }
 
 input AddressInput {
@@ -10564,6 +10584,12 @@ type User implements Node & ObjectWithMetadata @doc(category: "Users") {
 
   """List of customer groups assigned to the user."""
   customerGroups: [CustomerGroup!]
+
+  """List of promotions assigned to the user."""
+  promotions(
+    """Slug of a channel for which the data should be returned."""
+    channel: String
+  ): [PromotionPublic!]
 }
 
 """Checkout object."""
