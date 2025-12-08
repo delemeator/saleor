@@ -143,6 +143,11 @@ def _update_or_create_listings(
             ["discount_amount"],
         )
 
+    # Clear applied_rule for listings that have rules deleted outside of this flow
+    ProductVariantChannelListing.objects.filter(applied_rule__isnull=False).exclude(
+        applied_rule_id__in=PromotionRule.objects.values("id")
+    ).update(applied_rule=None)
+
     manager = AnonymousPluginManagerLoader(SaleorContext()).load("Anonymous").get()
 
     products = {listing.product for listing in changed_products_listings_to_update}

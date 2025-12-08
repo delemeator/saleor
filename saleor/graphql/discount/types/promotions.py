@@ -7,11 +7,13 @@ from ...account.types import CustomerGroup
 from ...channel.types import Channel
 from ...core import ResolveInfo
 from ...core.connection import CountableConnection
+from ...core.context import ChannelContext
 from ...core.descriptions import ADDED_IN_319, PREVIEW_FEATURE
 from ...core.doc_category import DOC_CATEGORY_DISCOUNTS
 from ...core.fields import PermissionsField
 from ...core.scalars import JSON, DateTime, PositiveDecimal
 from ...core.types import ModelObjectType, NonNullList
+from ...core.types.context import ChannelContextType
 from ...meta.types import ObjectWithMetadata
 from ...translations.fields import TranslationField
 from ...translations.types import PromotionRuleTranslation, PromotionTranslation
@@ -20,6 +22,7 @@ from ..dataloaders import (
     GiftsByPromotionRuleIDLoader,
     PromotionByIdLoader,
     PromotionEventsByPromotionIdLoader,
+    PromotionRewardStatsByPromotionIdAndChannelLoader,
     PromotionRulesByPromotionIdLoader,
 )
 from ..enums import PromotionTypeEnum, RewardTypeEnum, RewardValueTypeEnum
@@ -183,6 +186,21 @@ class PromotionRule(ModelObjectType[models.PromotionRule]):
         return GiftsByPromotionRuleIDLoader(info.context).load(root.id).then(with_gifts)
 
 
+class PromotionRewardStats(graphene.ObjectType):
+    fixed_min = graphene.Float(
+        description="The minimum fixed reward amount defined in this promotion's rules."
+    )
+    fixed_max = graphene.Float(
+        description="The maximum fixed reward amount defined in this promotion's rules."
+    )
+    percentage_min = graphene.Float(
+        description="The minimum percentage reward defined in this promotion's rules."
+    )
+    percentage_max = graphene.Float(
+        description="The maximum percentage reward defined in this promotion's rules."
+    )
+
+
 class PromotionPublic(ModelObjectType[models.Promotion]):
     id = graphene.GlobalID(required=True)
     name = graphene.String(required=True, description="Name of the promotion.")
@@ -201,16 +219,44 @@ class PromotionPublic(ModelObjectType[models.Promotion]):
     )
     translation = TranslationField(PromotionTranslation, type_name="promotion")
 
+    reward_stats = graphene.Field(
+        PromotionRewardStats,
+        description="Statistics about the rewards defined in this promotion's rules.",
+    )
+
     class Meta:
+        default_resolver = ChannelContextType.resolver_with_context
         description = "Represents publicly available information about the promotion"
         model = models.Promotion
         doc_category = DOC_CATEGORY_DISCOUNTS
+
+    @staticmethod
+    def resolve_reward_stats(root: ChannelContext[models.Promotion], info: ResolveInfo):
+        channel_slug = root.channel_slug
+
+        if not channel_slug:
+            return None
+
+        return (
+            PromotionRewardStatsByPromotionIdAndChannelLoader(info.context)
+            .load((root.node.id, channel_slug))
+            .then(
+                lambda stats: PromotionRewardStats(
+                    fixed_min=stats.fixed_min,
+                    fixed_max=stats.fixed_max,
+                    percentage_min=stats.percentage_min,
+                    percentage_max=stats.percentage_max,
+                )
+            )
+        )
 
 
 class PromotionRulePublic(ModelObjectType[models.PromotionRule]):
     id = graphene.GlobalID(required=True)
     promotion = graphene.Field(
-        PromotionPublic, description="Promotion to which the rule belongs."
+        PromotionPublic,
+        channel=graphene.String(required=False, description="Channel slug."),
+        description="Promotion to which the rule belongs.",
     )
 
     class Meta:
@@ -221,8 +267,12 @@ class PromotionRulePublic(ModelObjectType[models.PromotionRule]):
         doc_category = DOC_CATEGORY_DISCOUNTS
 
     @staticmethod
-    def resolve_promotion(root: models.PromotionRule, info: ResolveInfo):
-        return PromotionByIdLoader(info.context).load(root.promotion_id)
+    def resolve_promotion(root: models.PromotionRule, info: ResolveInfo, channel=None):
+        return (
+            PromotionByIdLoader(info.context)
+            .load(root.promotion_id)
+            .then(lambda promotion: ChannelContext(promotion, channel_slug=channel))
+        )
 
 
 class PromotionCountableConnection(CountableConnection):

@@ -1,4 +1,6 @@
 from collections import defaultdict
+from dataclasses import dataclass
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -531,3 +533,120 @@ class GiftsByPromotionRuleIDLoader(DataLoader[int, list[ProductVariant]]):
         ):
             rule_to_gifts_map[rule_id].append(gifts.get(variant_id))
         return [rule_to_gifts_map.get(rule_id, []) for rule_id in keys]
+
+
+class PromotionsByCustomerGroupsAndChannelLoader(
+    DataLoader[tuple[tuple[int, ...], str], list[Promotion]]
+):
+    """Loads promotions for a user based on their customer groups and channel.
+
+    Key format: (tuple_of_group_ids, channel_slug)
+    """
+
+    context_key = "promotions_by_customer_groups_and_channel"
+
+    def batch_load(self, keys):
+        all_group_ids = set()
+        all_channel_slugs = set()
+
+        for group_ids, channel_slug in keys:
+            all_group_ids.update(group_ids)
+            all_channel_slugs.add(channel_slug)
+
+        rules_relationships = (
+            PromotionRule.objects.using(self.database_connection_name)
+            .filter(
+                customer_groups__id__in=all_group_ids,
+                channels__slug__in=all_channel_slugs,
+            )
+            .values_list("promotion_id", "channels__slug", "customer_groups__id")
+        )
+
+        criteria_to_promo_ids = defaultdict(set)
+        for promo_id, channel_slug, group_id in rules_relationships:
+            criteria_to_promo_ids[(channel_slug, group_id)].add(promo_id)
+
+        key_to_promo_ids = []
+        all_found_promo_ids = set()
+
+        for group_ids, channel_slug in keys:
+            valid_pids = set()
+            for group_id in group_ids:
+                if (channel_slug, group_id) in criteria_to_promo_ids:
+                    valid_pids.update(criteria_to_promo_ids[(channel_slug, group_id)])
+
+            key_to_promo_ids.append(valid_pids)
+            all_found_promo_ids.update(valid_pids)
+
+        promotions = Promotion.objects.using(self.database_connection_name).in_bulk(
+            all_found_promo_ids
+        )
+
+        results = []
+        for pids in key_to_promo_ids:
+            # Retrieve objects, filtering out any that might be missing (safety)
+            # Sorting by name/pk ensures deterministic API responses
+            promo_objs = [promotions[pid] for pid in pids if pid in promotions]
+            promo_objs.sort(key=lambda p: (p.name, p.pk))
+            results.append(promo_objs)
+
+        return results
+
+
+@dataclass
+class PromotionRewardStats:
+    fixed_min: Decimal | None = None
+    fixed_max: Decimal | None = None
+    percentage_min: Decimal | None = None
+    percentage_max: Decimal | None = None
+
+
+class PromotionRewardStatsByPromotionIdAndChannelLoader(
+    DataLoader[tuple[int, str], PromotionRewardStats]
+):
+    context_key = "promotion_reward_stats_by_promotion_id_and_channel"
+
+    def batch_load(self, keys):
+        promo_ids = {key[0] for key in keys}
+        channel_slugs = {key[1] for key in keys}
+
+        rules_data = (
+            PromotionRule.objects.using(self.database_connection_name)
+            .filter(promotion_id__in=promo_ids, channels__slug__in=channel_slugs)
+            .values_list(
+                "promotion_id", "channels__slug", "reward_value_type", "reward_value"
+            )
+        )
+
+        stats_map = defaultdict(lambda: {"fixed_vals": [], "percentage_vals": []})
+
+        for promo_id, channel_slug, r_type, r_val in rules_data:
+            if r_val is None:
+                continue
+
+            lookup_key = (promo_id, channel_slug)
+
+            if r_type == "FIXED":
+                stats_map[lookup_key]["fixed_vals"].append(r_val)
+            elif r_type == "PERCENTAGE":
+                stats_map[lookup_key]["percentage_vals"].append(r_val)
+
+        results = []
+        for key in keys:
+            data = stats_map.get(key)
+            if not data:
+                results.append(PromotionRewardStats())
+                continue
+
+            fixed = data["fixed_vals"]
+            percentage = data["percentage_vals"]
+
+            stats = PromotionRewardStats(
+                fixed_min=min(fixed) if fixed else None,
+                fixed_max=max(fixed) if fixed else None,
+                percentage_min=min(percentage) if percentage else None,
+                percentage_max=max(percentage) if percentage else None,
+            )
+            results.append(stats)
+
+        return results

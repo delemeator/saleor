@@ -1,5 +1,5 @@
 from .discounts import OrderDiscount
-from .promotions import Promotion, PromotionRule
+from .promotions import Promotion, PromotionPublic, PromotionRule, PromotionRulePublic
 from .sales import Sale, SaleChannelListing, SaleCountableConnection
 from .vouchers import (
     Voucher,
@@ -19,4 +19,6 @@ __all__ = [
     "VoucherCountableConnection",
     "Promotion",
     "PromotionRule",
+    "PromotionPublic",
+    "PromotionRulePublic",
 ]

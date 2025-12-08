@@ -17,7 +17,11 @@ from .....payment.interface import (
 )
 from .....tax.calculations.order import update_order_prices_with_flat_rates
 from ....payment.enums import TokenizedPaymentFlowEnum
-from ....tests.utils import assert_no_permission, get_graphql_content
+from ....tests.utils import (
+    assert_graphql_error_with_message,
+    assert_no_permission,
+    get_graphql_content,
+)
 
 ME_QUERY = """
     query Me {
@@ -684,3 +688,126 @@ def test_me_query_stored_payment_methods(
             "data": payment_method_data,
         }
     ]
+
+
+QUERY_ME_WITH_PROMOTIONS = """
+    query Me($channel: String!) {
+        me {
+            promotions(channel: $channel) {
+                id
+                name
+                rewardStats {
+                    fixedMin
+                    fixedMax
+                    percentageMin
+                    percentageMax
+                }
+            }
+        }
+    }
+"""
+
+
+def test_me_query_promotions_success(
+    user_api_client,
+    channel_USD,
+    catalogue_promotion_without_rules,
+    customer_group_list,
+):
+    # given
+    customer_group = customer_group_list[0]
+    user = user_api_client.user
+    user.customer_groups.add(customer_group)
+
+    promotion = catalogue_promotion_without_rules
+    rule = promotion.rules.create(
+        name="Rule for Group",
+        catalogue_predicate={},
+        reward_value_type="PERCENTAGE",
+        reward_value=10,
+    )
+    rule.channels.add(channel_USD)
+    rule.customer_groups.add(customer_group)
+
+    # when
+    response = user_api_client.post_graphql(
+        QUERY_ME_WITH_PROMOTIONS, {"channel": channel_USD.slug}
+    )
+
+    # then
+    content = get_graphql_content(response)
+    promotions = content["data"]["me"]["promotions"]
+
+    assert len(promotions) == 1
+    assert promotions[0]["name"] == promotion.name
+    assert promotions[0]["rewardStats"]["percentageMin"] == 10
+    assert promotions[0]["rewardStats"]["percentageMax"] == 10
+    assert promotions[0]["rewardStats"]["fixedMin"] is None
+    assert promotions[0]["rewardStats"]["fixedMax"] is None
+
+
+def test_me_query_promotions_filters_by_customer_group(
+    user_api_client,
+    channel_USD,
+    catalogue_promotion_without_rules,
+    customer_group_list,
+):
+    # given
+    user = user_api_client.user
+    customer_group = customer_group_list[0]
+    # User is NOT added to customer_group
+
+    promotion = catalogue_promotion_without_rules
+    rule = promotion.rules.create(
+        name="Rule for Group",
+        catalogue_predicate={},
+        reward_value_type="PERCENTAGE",
+        reward_value=10,
+    )
+    rule.channels.add(channel_USD)
+    rule.customer_groups.add(customer_group)
+
+    # when
+    response = user_api_client.post_graphql(
+        QUERY_ME_WITH_PROMOTIONS, {"channel": channel_USD.slug}
+    )
+
+    # then
+    content = get_graphql_content(response)
+    promotions = content["data"]["me"]["promotions"]
+    assert len(promotions) == 0
+
+
+def test_me_query_promotions_filters_by_channel(
+    user_api_client,
+    channel_USD,
+    channel_PLN,
+    catalogue_promotion_without_rules,
+    customer_group_list,
+):
+    # given
+    user = user_api_client.user
+    customer_group = customer_group_list[0]
+    user.customer_groups.add(customer_group)
+
+    promotion = catalogue_promotion_without_rules
+    rule = promotion.rules.create(
+        name="Rule for Group",
+        catalogue_predicate={},
+        reward_value_type="PERCENTAGE",
+        reward_value=10,
+    )
+    # Rule is added to USD, but we will query for PLN
+    rule.channels.add(channel_USD)
+    rule.customer_groups.add(customer_group)
+
+    # when
+    # Querying for PLN channel
+    response = user_api_client.post_graphql(
+        QUERY_ME_WITH_PROMOTIONS, {"channel": channel_PLN.slug}
+    )
+
+    # then
+    content = get_graphql_content(response)
+    promotions = content["data"]["me"]["promotions"]
+    assert len(promotions) == 0

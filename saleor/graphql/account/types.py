@@ -34,7 +34,11 @@ from ..core.connection import (
     create_connection_slice,
     create_connection_slice_for_sync_webhook_control_context,
 )
-from ..core.context import SyncWebhookControlContext, get_database_connection_name
+from ..core.context import (
+    ChannelContext,
+    SyncWebhookControlContext,
+    get_database_connection_name,
+)
 from ..core.descriptions import ADDED_IN_319, PREVIEW_FEATURE
 from ..core.doc_category import DOC_CATEGORY_USERS
 from ..core.enums import LanguageCodeEnum
@@ -54,6 +58,9 @@ from ..core.types import (
     ThumbnailField,
 )
 from ..core.utils import from_global_id_or_error, str_to_enum, to_global_id_or_none
+from ..discount.dataloaders import (
+    PromotionsByCustomerGroupsAndChannelLoader,
+)
 from ..giftcard.dataloaders import GiftCardsByUserLoader
 from ..meta.types import ObjectWithMetadata
 from ..order.dataloaders import OrderByIdLoader, OrderLineByIdLoader, OrdersByUserLoader
@@ -500,6 +507,14 @@ class User(ModelObjectType[models.User]):
         "saleor.graphql.account.types.CustomerGroup",
         description="List of customer groups assigned to the user.",
     )
+    promotions = NonNullList(
+        "saleor.graphql.discount.types.PromotionPublic",
+        description="List of promotions assigned to the user.",
+        channel=graphene.String(
+            description="Slug of a channel for which the data should be returned.",
+            required=False,
+        ),
+    )
 
     class Meta:
         description = "Represents user data."
@@ -842,6 +857,26 @@ class User(ModelObjectType[models.User]):
             return AddressByIdLoader(info.context).load(
                 root.default_shipping_address_id
             )
+        return None
+
+    @staticmethod
+    def resolve_promotions(root: models.User, info: ResolveInfo, **kwargs):
+        if channel := kwargs.get("channel"):
+            # We convert the manager to a tuple of IDs to create a hashable key
+            group_ids = tuple(g.id for g in root.customer_groups.all())
+
+            return (
+                PromotionsByCustomerGroupsAndChannelLoader(info.context)
+                .load((group_ids, channel))
+                .then(
+                    lambda promotions: [
+                        ChannelContext(promotion, channel)
+                        for promotion in promotions
+                        if promotion is not None
+                    ]
+                )
+            )
+
         return None
 
 
