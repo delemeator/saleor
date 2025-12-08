@@ -20,6 +20,7 @@ from ...discount.models import (
     Promotion,
     PromotionEvent,
     PromotionRule,
+    RewardValueType,
     Voucher,
     VoucherChannelListing,
     VoucherCode,
@@ -629,9 +630,9 @@ class PromotionRewardStatsByPromotionIdAndChannelLoader(
 
             lookup_key = (promo_id, channel_slug)
 
-            if r_type == "FIXED":
+            if r_type == RewardValueType.FIXED:
                 stats_map[lookup_key]["fixed_vals"].append(r_val)
-            elif r_type == "PERCENTAGE":
+            elif r_type == RewardValueType.PERCENTAGE:
                 stats_map[lookup_key]["percentage_vals"].append(r_val)
 
         results = []

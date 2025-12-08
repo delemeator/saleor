@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from .....checkout.calculations import _fetch_checkout_prices_if_expired
 from .....checkout.fetch import fetch_checkout_lines
+from .....discount.models import RewardValueType
 from .....order import OrderStatus
 from .....order.models import FulfillmentStatus
 from .....payment.interface import (
@@ -18,7 +19,6 @@ from .....payment.interface import (
 from .....tax.calculations.order import update_order_prices_with_flat_rates
 from ....payment.enums import TokenizedPaymentFlowEnum
 from ....tests.utils import (
-    assert_graphql_error_with_message,
     assert_no_permission,
     get_graphql_content,
 )
@@ -724,7 +724,7 @@ def test_me_query_promotions_success(
     rule = promotion.rules.create(
         name="Rule for Group",
         catalogue_predicate={},
-        reward_value_type="PERCENTAGE",
+        reward_value_type=RewardValueType.PERCENTAGE,
         reward_value=10,
     )
     rule.channels.add(channel_USD)
