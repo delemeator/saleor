@@ -390,12 +390,16 @@ def _fetch_checkout_prices_if_expired(
         checkout_info, database_connection_name
     )
 
-    recalculate_discounts(
-        checkout_info,
-        lines,
-        database_connection_name=database_connection_name,
-        force_update=force_update,
-    )
+    try:
+        recalculate_discounts(
+            checkout_info,
+            lines,
+            database_connection_name=database_connection_name,
+            force_update=force_update,
+        )
+    except Checkout.DoesNotExist:
+        # Checkout was removed or converted to a order. Return data without saving.
+        return checkout_info, lines
 
     checkout.tax_error = None
 
@@ -465,7 +469,6 @@ def _fetch_checkout_prices_if_expired(
                     "discount_amount",
                     "discount_name",
                     "currency",
-                    "last_change",
                     "price_expiration",
                     "discount_expiration",
                     "tax_error",
@@ -530,9 +533,8 @@ def recalculate_discounts(
     else:
         checkout.discount_expiration = timezone.now() + settings.CHECKOUT_PRICES_TTL
 
-    checkout.save(
+    checkout.safe_update(
         update_fields=["discount_expiration"],
-        using=settings.DATABASE_CONNECTION_DEFAULT_NAME,
     )
 
     return checkout_info, lines
@@ -647,6 +649,8 @@ def _get_taxes_for_checkout(
     """
     from .utils import log_address_if_validation_skipped_for_checkout
 
+    if pregenerated_subscription_payloads is None:
+        pregenerated_subscription_payloads = {}
     tax_data = None
     try:
         tax_data = manager.get_taxes_for_checkout(

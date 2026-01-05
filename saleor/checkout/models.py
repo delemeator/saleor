@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from django.conf import settings
+from django.contrib.postgres.indexes import BTreeIndex
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import smart_str
 from django_countries.fields import Country, CountryField
@@ -18,6 +19,7 @@ from ..channel.models import Channel
 from ..core.db.fields import MoneyField, TaxedMoneyField
 from ..core.models import ModelWithMetadata
 from ..core.taxes import TAX_ERROR_FIELD_LENGTH, zero_money
+from ..core.utils.json_serializer import CustomJsonEncoder
 from ..giftcard.models import GiftCard
 from ..permission.enums import CheckoutPermissions
 from ..shipping.models import ShippingMethod
@@ -32,6 +34,71 @@ def get_default_country():
     return settings.DEFAULT_COUNTRY
 
 
+class CheckoutDelivery(models.Model):
+    """Model to cache shipping methods for a checkout."""
+
+    id = models.UUIDField(primary_key=True, editable=False, unique=True, default=uuid4)
+    checkout = models.ForeignKey(
+        "checkout.Checkout",
+        related_name="shipping_methods",
+        on_delete=models.CASCADE,
+    )
+    external_shipping_method_id = models.CharField(
+        max_length=1024, blank=True, null=True, editable=False, db_index=True
+    )
+    built_in_shipping_method_id = models.IntegerField(
+        blank=True, null=True, editable=False, db_index=True
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+    price = MoneyField(amount_field="price_amount", currency_field="currency")
+    price_amount = models.DecimalField(
+        max_digits=settings.DEFAULT_MAX_DIGITS,
+        decimal_places=settings.DEFAULT_DECIMAL_PLACES,
+    )
+    currency = models.CharField(
+        max_length=settings.DEFAULT_CURRENCY_CODE_LENGTH,
+    )
+    maximum_delivery_days = models.PositiveIntegerField(null=True, blank=True)
+    minimum_delivery_days = models.PositiveIntegerField(null=True, blank=True)
+    metadata = models.JSONField(default=dict)
+    private_metadata = models.JSONField(default=dict)
+    active = models.BooleanField(default=True)
+    message = models.TextField(blank=True, null=True)
+    is_external = models.BooleanField(default=False)
+    is_valid = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    # Denormalized tax class data
+    tax_class_id = models.IntegerField(null=True, blank=True)
+    tax_class_name = models.CharField(max_length=255, null=True, blank=True)
+    tax_class_private_metadata = models.JSONField(
+        blank=True, db_default={}, default=dict, encoder=CustomJsonEncoder
+    )
+    tax_class_metadata = models.JSONField(
+        blank=True, db_default={}, default=dict, encoder=CustomJsonEncoder
+    )
+
+    @property
+    def shipping_method_id(self) -> str:
+        return self.external_shipping_method_id or str(self.built_in_shipping_method_id)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "checkout",
+                    "external_shipping_method_id",
+                    "built_in_shipping_method_id",
+                    "is_valid",
+                ],
+                name="unique_for_checkout",
+                nulls_distinct=False,
+            ),
+        ]
+        ordering = ("created_at", "pk")
+
+
 class Checkout(models.Model):
     """A shopping checkout."""
 
@@ -43,6 +110,9 @@ class Checkout(models.Model):
     # checkout
     last_transaction_modified_at = models.DateTimeField(null=True, blank=True)
     automatically_refundable = models.BooleanField(default=False)
+
+    # Tracks the last time automatic checkout completion was attempted
+    last_automatic_completion_attempt = models.DateTimeField(null=True, blank=True)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -193,6 +263,16 @@ class Checkout(models.Model):
         db_index=True,
     )
 
+    assigned_delivery = models.ForeignKey(
+        CheckoutDelivery,
+        blank=True,
+        null=True,
+        related_name="+",
+        on_delete=models.SET_NULL,
+    )
+
+    delivery_methods_stale_at = models.DateTimeField(null=True, blank=True)
+
     price_expiration = models.DateTimeField(default=timezone.now)
     # Expiration time of the applied discounts.
     # Decides if the discounts are updated before tax recalculation.
@@ -235,9 +315,41 @@ class Checkout(models.Model):
             (CheckoutPermissions.HANDLE_TAXES.codename, "Handle taxes"),
             (CheckoutPermissions.MANAGE_TAXES.codename, "Manage taxes"),
         )
+        indexes = [
+            BTreeIndex(
+                fields=["last_automatic_completion_attempt"],
+                name="automaticcompletionattempt_idx",
+            ),
+            models.Index(fields=["created_at"], name="idx_checkout_created_at"),
+        ]
 
     def __iter__(self):
         return iter(self.lines.all())
+
+    def safe_update(self, update_fields: list[str]) -> None:
+        """Safely update the checkout instance.
+
+        This method locks the checkout row in the database to prevent concurrent updates.
+        In case the checkout does not exist, it raises a CheckoutDoesNotExist exception.
+
+        It prevents the DatabaseError that occurs in case save with update_fields is
+        called on a deleted checkout instance.
+        """
+        from ..core.db.connection import allow_writer
+
+        with allow_writer():
+            with transaction.atomic():
+                checkout = (
+                    Checkout.objects.select_for_update()
+                    .filter(pk=self.pk)
+                    .only("pk")
+                    .first()
+                )
+                if not checkout:
+                    raise Checkout.DoesNotExist(
+                        "Checkout does not exist. Unable to update."
+                    )
+                self.save(update_fields=update_fields)
 
     def get_customer_email(self) -> str | None:
         if self.email:
