@@ -278,6 +278,7 @@ def _validate_mounts_for_widget(mount: str):
         AppExtensionMount.GIFT_CARD_DETAILS_WIDGETS,
         AppExtensionMount.CUSTOMER_DETAILS_WIDGETS,
         AppExtensionMount.COLLECTION_DETAILS_WIDGETS,
+        AppExtensionMount.TRANSLATIONS_DETAILS_WIDGETS,
     ]
 
     if mount not in widget_available_mounts:
