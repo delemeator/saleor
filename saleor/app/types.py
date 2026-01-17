@@ -71,6 +71,7 @@ class AppExtensionMount:
     MENU_DETAILS_MORE_ACTIONS = "menu_details_more_actions"
 
     TRANSLATIONS_MORE_ACTIONS = "translations_more_actions"
+    TRANSLATIONS_DETAILS_WIDGETS = "translations_details_widgets"
 
     CHOICES = [
         (CATEGORY_OVERVIEW_CREATE, "category_overview_create"),
@@ -123,6 +124,7 @@ class AppExtensionMount:
         (MENU_OVERVIEW_MORE_ACTIONS, "menu_overview_more_actions"),
         (MENU_DETAILS_MORE_ACTIONS, "menu_details_more_actions"),
         (TRANSLATIONS_MORE_ACTIONS, "translations_more_actions"),
+        (TRANSLATIONS_DETAILS_WIDGETS, "translations_details_widgets"),
     ]
 
 
