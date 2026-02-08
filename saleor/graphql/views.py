@@ -338,6 +338,9 @@ class GraphQLView(View):
             span.set_attribute(
                 saleor_attributes.GRAPHQL_OPERATION_IDENTIFIER, operation_identifier
             )
+            query_duration_attrs[saleor_attributes.GRAPHQL_OPERATION_IDENTIFIER] = (
+                operation_identifier
+            )
             span.set_attribute(
                 saleor_attributes.GRAPHQL_DOCUMENT_FINGERPRINT,
                 operation_fingerprint,
@@ -369,11 +372,15 @@ class GraphQLView(View):
                 span.set_status(status=StatusCode.ERROR, description=error_description)
                 error_type = cost_errors[0].__class__.__name__ if cost_errors else None
                 record_graphql_query_count(
+                    operation_identifier=operation_identifier,
                     operation_type=operation_type,
                     error_type=error_type,
                 )
                 record_graphql_query_cost(
-                    query_cost, operation_type=operation_type, error_type=error_type
+                    query_cost,
+                    operation_identifier=operation_identifier,
+                    operation_type=operation_type,
+                    error_type=error_type,
                 )
                 if error_type:
                     query_duration_attrs[error_attributes.ERROR_TYPE] = error_type
@@ -422,11 +429,13 @@ class GraphQLView(View):
 
                 record_graphql_query_count(
                     operation_type=operation_type,
+                    operation_identifier=operation_identifier,
                     error_type=error_type,
                 )
                 record_graphql_query_cost(
                     query_cost,
                     operation_type=operation_type,
+                    operation_identifier=operation_identifier,
                     error_type=error_type,
                 )
                 if error_type:
@@ -443,11 +452,13 @@ class GraphQLView(View):
                 error_type = e.__class__.__name__
                 record_graphql_query_count(
                     operation_type=operation_type,
+                    operation_identifier=operation_identifier,
                     error_type=error_type,
                 )
                 record_graphql_query_cost(
                     query_cost,
                     operation_type=operation_type,
+                    operation_identifier=operation_identifier,
                     error_type=error_type,
                 )
                 query_duration_attrs[error_attributes.ERROR_TYPE] = error_type

@@ -93,9 +93,13 @@ def record_graphql_query_count(
     amount: int = 1,
     *,
     operation_type: str | None = "",
+    operation_identifier: str | None = "",
     error_type: str | None = None,
 ) -> None:
-    attributes = {graphql_attributes.GRAPHQL_OPERATION_TYPE: operation_type or ""}
+    attributes = {
+        saleor_attributes.GRAPHQL_OPERATION_IDENTIFIER: operation_identifier or "",
+        graphql_attributes.GRAPHQL_OPERATION_TYPE: operation_type or "",
+    }
     if error_type:
         attributes[error_attributes.ERROR_TYPE] = error_type
     meter.record(
@@ -107,7 +111,8 @@ def record_graphql_query_count(
 def record_graphql_query_duration() -> Iterator[dict[str, AttributeValue]]:
     start = time.monotonic()
     attributes: dict[str, AttributeValue] = {
-        graphql_attributes.GRAPHQL_OPERATION_TYPE: ""
+        graphql_attributes.GRAPHQL_OPERATION_TYPE: "",
+        saleor_attributes.GRAPHQL_OPERATION_IDENTIFIER: "",
     }
     try:
         yield attributes
@@ -134,9 +139,13 @@ def record_graphql_query_cost(
     cost: int,
     *,
     operation_type: str | None = "",
+    operation_identifier: str | None = "",
     error_type: str | None = None,
 ) -> None:
-    attributes = {graphql_attributes.GRAPHQL_OPERATION_TYPE: operation_type or ""}
+    attributes = {
+        saleor_attributes.GRAPHQL_OPERATION_IDENTIFIER: operation_identifier or "",
+        graphql_attributes.GRAPHQL_OPERATION_TYPE: operation_type or "",
+    }
     if error_type:
         attributes[error_attributes.ERROR_TYPE] = error_type
     meter.record(METRIC_GRAPHQL_QUERY_COST, cost, Unit.COST, attributes=attributes)
