@@ -14,6 +14,7 @@ from ...core.units import (
     AreaUnits,
     DistanceUnits,
     MeasurementUnits,
+    OtherUnits,
     VolumeUnits,
     WeightUnits,
 )
@@ -126,7 +127,8 @@ DistanceUnitsEnum: Final[graphene.Enum] = to_enum(DistanceUnits)
 AreaUnitsEnum: Final[graphene.Enum] = to_enum(AreaUnits)
 VolumeUnitsEnum: Final[graphene.Enum] = to_enum(VolumeUnits)
 WeightUnitsEnum: Final[graphene.Enum] = to_enum(WeightUnits)
-unit_enums = [DistanceUnitsEnum, AreaUnitsEnum, VolumeUnitsEnum, WeightUnitsEnum]
+OtherUnitsEnum: Final[graphene.Enum] = to_enum(OtherUnits)
+unit_enums = [DistanceUnitsEnum, AreaUnitsEnum, VolumeUnitsEnum, WeightUnitsEnum, OtherUnitsEnum]
 
 
 class ErrorPolicy:

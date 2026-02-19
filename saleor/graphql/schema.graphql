@@ -6587,6 +6587,10 @@ enum MeasurementUnitsEnum {
   OZ
   KG
   TONNE
+  W
+  V
+  DB
+  L_H
 }
 
 """
@@ -32163,6 +32167,13 @@ enum VolumeUnitsEnum {
   FL_OZ
   ACRE_IN
   ACRE_FT
+}
+
+enum OtherUnitsEnum {
+  W
+  V
+  DB
+  L_H
 }
 
 """

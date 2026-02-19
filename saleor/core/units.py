@@ -89,6 +89,19 @@ class WeightUnits:
         (TONNE, "Tonne"),
     ]
 
+class OtherUnits:
+    W = "W"
+    V = "V"
+    DB = "dB"
+    LH = "l_h"
+
+    CHOICES = [
+        (W, "Watt"),
+        (V, "Volt"),
+        (DB, "Decibel"),
+        (LH, "L/H"),
+    ]
+
 
 def prepare_all_units_dict():
     measurement_dict = {
@@ -98,6 +111,7 @@ def prepare_all_units_dict():
             AreaUnits.CHOICES,
             VolumeUnits.CHOICES,
             WeightUnits.CHOICES,
+            OtherUnits.CHOICES,
         ]
         for unit, _ in unit_choices
     }
