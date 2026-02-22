@@ -51,6 +51,14 @@ class CheckoutLineUpdateInput(BaseInputObjectType):
             "will be provided multiple times, the last price will be used."
         ),
     )
+    price_discounted = PositiveDecimal(
+        required=False,
+        description=(
+            "Custom discounted price of the item. Can be set only by apps "
+            "with `HANDLE_CHECKOUTS` permission. Leaving empty will reset discount. "
+            "It will be applied if `price_discounted` is better than the best catalogue rule"
+        ),
+    )
     line_id = graphene.ID(
         description="ID of the line.",
         required=False,

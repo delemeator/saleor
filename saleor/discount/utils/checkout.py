@@ -37,9 +37,7 @@ def create_or_update_discount_objects_from_promotion_for_checkout(
     database_connection_name: str = settings.DATABASE_CONNECTION_DEFAULT_NAME,
 ):
     soonest_catalogue_promotion_end_date = (
-        create_checkout_line_discount_objects_for_catalogue_promotions(
-            checkout_info, lines_info
-        )
+        create_checkout_line_discount_objects_for_catalogue_promotions(lines_info)
     )
     order_promotion_end_date = create_checkout_discount_objects_for_order_promotions(
         checkout_info, lines_info, database_connection_name=database_connection_name
@@ -50,11 +48,10 @@ def create_or_update_discount_objects_from_promotion_for_checkout(
 
 
 def create_checkout_line_discount_objects_for_catalogue_promotions(
-    checkout_info: "CheckoutInfo",
     lines_info: list["CheckoutLineInfo"],
 ) -> datetime.datetime | None:
     discount_data = prepare_checkout_line_discount_objects_for_catalogue_promotions(
-        checkout_info, lines_info
+        lines_info
     )
     if not discount_data or not lines_info:
         return None
@@ -72,10 +69,9 @@ def create_checkout_line_discount_objects_for_catalogue_promotions(
         with transaction.atomic():
             # Protect against potential thread race. CheckoutLine object can have only
             # single catalogue discount applied.
+            checkout_id = lines_info[0].line.checkout_id
             _checkout_lock = list(
-                Checkout.objects.filter(pk=checkout_info.checkout.pk).select_for_update(
-                    of=(["self"])
-                )
+                Checkout.objects.filter(pk=checkout_id).select_for_update(of=(["self"]))
             )
 
             if discount_ids_to_remove := [
@@ -105,25 +101,7 @@ def create_checkout_line_discount_objects_for_catalogue_promotions(
     return soonest_end_date
 
 
-def filter_relevant_rules(
-    rules_info,
-    user_groups_ids,
-):
-    relevant_rules = []
-
-    if rules_info is None:
-        return relevant_rules
-
-    for rule_info in rules_info:
-        rule_group_ids = {group.id for group in rule_info.rule.customer_groups.all()}
-        if len(rule_group_ids) == 0 or len(rule_group_ids & user_groups_ids) > 0:
-            relevant_rules.append(rule_info)
-
-    return relevant_rules
-
-
 def prepare_checkout_line_discount_objects_for_catalogue_promotions(
-    checkout_info: "CheckoutInfo",
     lines_info: list["CheckoutLineInfo"],
 ) -> (
     tuple[
@@ -141,12 +119,6 @@ def prepare_checkout_line_discount_objects_for_catalogue_promotions(
     updated_fields: list[str] = []
     soonest_end_date = None
     applied_promotions_end_dates = []
-
-    user = checkout_info.user
-    user_groups_ids = set()
-    if user:
-        user_groups = user.customer_groups.all()
-        user_groups_ids = {group.id for group in user_groups}
 
     if not lines_info:
         return None
@@ -177,28 +149,19 @@ def prepare_checkout_line_discount_objects_for_catalogue_promotions(
             line_discounts_to_remove.extend(discounts_to_update)
             continue
 
-        relevant_rules = filter_relevant_rules(
-            line_info.rules_info,
-            user_groups_ids,
+        # check if the line price is discounted by catalogue promotion
+        discounted_line = is_discounted_line_by_catalogue_promotion(
+            line_info.channel_listing
         )
         # filter out rules that are not applicable to the user
-
-        # check if the line price is discounted by catalogue promotion
-        discounted_line = is_discounted_line_by_catalogue_promotion(relevant_rules)
 
         # delete all existing discounts if the line is not discounted or it is a gift
         if not discounted_line or line.is_gift:
             line_discounts_to_remove.extend(discounts_to_update)
             continue
 
-        if len(relevant_rules) > 0:
-            rule_info = sorted(
-                relevant_rules,
-                key=lambda x: x.variant_listing_promotion_rule.discount_amount
-                if x.variant_listing_promotion_rule
-                else 0,
-                reverse=True,
-            )[0]
+        if line_info.rules_info:
+            rule_info = line_info.rules_info[0]
             rule = rule_info.rule
             promotion = rule_info.promotion
             if promotion.end_date:

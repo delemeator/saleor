@@ -95,49 +95,21 @@ def calculate_discounted_price_for_rules(
     return max(price - total_discount, zero_money(currency))
 
 
-def filter_public_rules(
-    rules_info: list[PromotionRuleInfo] | None,
-) -> tuple[list[PromotionRuleInfo], list[PromotionRuleInfo]]:
-    """Filter out rules that are not public."""
-    if not rules_info:
-        return [], []
-
-    public_rules, customer_group_rules = [], []
-
-    for rule_info in rules_info:
-        if rule_info.rule.customer_groups.exists():
-            customer_group_rules.append(rule_info)
-        else:
-            public_rules.append(rule_info)
-
-    return public_rules, customer_group_rules
-
-
 def calculate_discounted_price_for_promotions(
     *,
     price: Money,
     rules_info_per_variant: dict[int, list[PromotionRuleInfo]],
     channel: "Channel",
     variant_id: int,
-) -> tuple[tuple[UUID, Money] | None, list[tuple[UUID, Money]]]:
+) -> tuple[UUID, Money] | None:
     """Return minimum product's price of all prices with promotions applied."""
     applied_discount = None
-    public_rules, customer_group_rules = filter_public_rules(
-        rules_info_per_variant.get(variant_id)
-    )
-
-    if public_rules:
-        applied_discount = get_best_promotion_discount(price, public_rules, channel)
-
-    customer_group_discounts = get_product_promotion_discounts(
-        rules_info=customer_group_rules, channel=channel
-    )
-    customer_group_discounts = [
-        (rule_id, price - discount(price))
-        for rule_id, discount in customer_group_discounts
-    ]
-
-    return (applied_discount, customer_group_discounts)
+    rules_info_for_variant = rules_info_per_variant.get(variant_id)
+    if rules_info_for_variant:
+        applied_discount = get_best_promotion_discount(
+            price, rules_info_for_variant, channel
+        )
+    return applied_discount
 
 
 def get_best_promotion_discount(
@@ -195,12 +167,20 @@ def get_product_discount_on_promotion(
 
 
 def is_discounted_line_by_catalogue_promotion(
-    rules_info: list["VariantPromotionRuleInfo"],
+    variant_channel_listing: "ProductVariantChannelListing",
 ) -> bool:
     """Return True when the price is discounted by catalogue promotion."""
-    any_catalogue_rule = rules_info is not None and len(rules_info) > 0
+    price_amount = variant_channel_listing.price_amount
+    discounted_price_amount = variant_channel_listing.discounted_price_amount
 
-    return any_catalogue_rule
+    if (
+        price_amount is None
+        or discounted_price_amount is None
+        or price_amount == discounted_price_amount
+    ):
+        return False
+
+    return True
 
 
 def _get_rule_discount_amount(
@@ -552,20 +532,12 @@ def get_variants_to_promotion_rules_map(
     ).filter(Exists(variant_qs.filter(id=OuterRef("productvariant_id"))))
 
     # fetch rules only for active promotions
-    rules = (
-        PromotionRule.objects.using(settings.DATABASE_CONNECTION_REPLICA_NAME)
-        .filter(
-            Exists(promotions.filter(id=OuterRef("promotion_id"))),
-            Exists(promotion_rule_variants.filter(promotionrule_id=OuterRef("pk"))),
-        )
-        .prefetch_related("customer_groups")
+    rules = PromotionRule.objects.using(
+        settings.DATABASE_CONNECTION_REPLICA_NAME
+    ).filter(
+        Exists(promotions.filter(id=OuterRef("promotion_id"))),
+        Exists(promotion_rule_variants.filter(promotionrule_id=OuterRef("pk"))),
     )
-
-    if customer_group_qs:
-        rules.filter(
-            Q(customer_groups__isnull=True)
-            | Q(Exists(customer_group_qs.filter(id=OuterRef("customer_groups__id"))))
-        )
 
     rule_to_channel_ids_map = _get_rule_to_channel_ids_map(rules)
     rules_in_bulk = rules.in_bulk()

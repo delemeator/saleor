@@ -10611,12 +10611,6 @@ type User implements Node & ObjectWithMetadata @doc(category: "Users") {
 
   """List of customer groups assigned to the user."""
   customerGroups: [CustomerGroup!]
-
-  """List of promotions assigned to the user."""
-  promotions(
-    """Slug of a channel for which the data should be returned."""
-    channel: String
-  ): [PromotionPublic!]
 }
 
 """Checkout object."""
@@ -14473,13 +14467,6 @@ type PromotionRule implements Node @doc(category: "Discounts") {
   Requires one of the following permissions: AUTHENTICATED_APP, AUTHENTICATED_STAFF_USER.
   """
   channels: [Channel!]
-
-  """
-  List of customer groups to which the rule applies.
-  
-  Requires one of the following permissions: AUTHENTICATED_APP, AUTHENTICATED_STAFF_USER.
-  """
-  customerGroups: [CustomerGroup!]
 
   """
   The reward value of the promotion rule. Defines the discount value applied when the rule conditions are met.
@@ -27249,9 +27236,6 @@ input PromotionRuleInput @doc(category: "Discounts") {
   Note: this API is currently in Feature Preview and can be subject to changes at later point.
   """
   gifts: [ID!]
-
-  """List of customer group ids to which the rule should apply to."""
-  customerGroups: [ID!]
 }
 
 input CataloguePredicateInput @doc(category: "Discounts") {
@@ -27482,9 +27466,6 @@ input PromotionRuleCreateInput {
   """
   gifts: [ID!]
 
-  """List of customer group ids to which the rule should apply to."""
-  customerGroups: [ID!]
-
   """The ID of the promotion that rule belongs to."""
   promotion: ID!
 }
@@ -27600,12 +27581,6 @@ input PromotionRuleUpdateInput {
   Note: this API is currently in Feature Preview and can be subject to changes at later point.
   """
   removeGifts: [ID!]
-
-  """List of customer group IDs to add."""
-  addCustomerGroups: [ID!]
-
-  """List of customer group IDs to remove."""
-  removeCustomerGroups: [ID!]
 }
 
 """
@@ -28561,6 +28536,11 @@ input CheckoutLineInput @doc(category: "Checkout") {
   price: PositiveDecimal
 
   """
+  Custom discounted price of the item. Can be set only by apps with `HANDLE_CHECKOUTS` permission. Leaving empty will reset discount. It will be applied if `price_discounted` is better than the best catalogue rule
+  """
+  priceDiscounted: PositiveDecimal
+
+  """
   Flag that allow force splitting the same variant into multiple lines by skipping the matching logic.
   """
   forceNewLine: Boolean = false
@@ -28761,6 +28741,11 @@ input CheckoutLineUpdateInput @doc(category: "Checkout") {
   Custom price of the item. Can be set only by apps with `HANDLE_CHECKOUTS` permission. When the line with the same variant will be provided multiple times, the last price will be used.
   """
   price: PositiveDecimal
+
+  """
+  Custom discounted price of the item. Can be set only by apps with `HANDLE_CHECKOUTS` permission. Leaving empty will reset discount. It will be applied if `price_discounted` is better than the best catalogue rule
+  """
+  priceDiscounted: PositiveDecimal
 
   """ID of the line."""
   lineId: ID

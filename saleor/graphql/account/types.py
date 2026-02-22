@@ -58,9 +58,6 @@ from ..core.types import (
     ThumbnailField,
 )
 from ..core.utils import from_global_id_or_error, str_to_enum, to_global_id_or_none
-from ..discount.dataloaders import (
-    PromotionsByCustomerGroupsAndChannelLoader,
-)
 from ..giftcard.dataloaders import GiftCardsByUserLoader
 from ..meta.types import ObjectWithMetadata
 from ..order.dataloaders import OrderByIdLoader, OrderLineByIdLoader, OrdersByUserLoader
@@ -507,14 +504,6 @@ class User(ModelObjectType[models.User]):
         "saleor.graphql.account.types.CustomerGroup",
         description="List of customer groups assigned to the user.",
     )
-    promotions = NonNullList(
-        "saleor.graphql.discount.types.PromotionPublic",
-        description="List of promotions assigned to the user.",
-        channel=graphene.String(
-            description="Slug of a channel for which the data should be returned.",
-            required=False,
-        ),
-    )
 
     class Meta:
         description = "Represents user data."
@@ -857,26 +846,6 @@ class User(ModelObjectType[models.User]):
             return AddressByIdLoader(info.context).load(
                 root.default_shipping_address_id
             )
-        return None
-
-    @staticmethod
-    def resolve_promotions(root: models.User, info: ResolveInfo, **kwargs):
-        if channel := kwargs.get("channel"):
-            # We convert the manager to a tuple of IDs to create a hashable key
-            group_ids = tuple(g.id for g in root.customer_groups.all())
-
-            return (
-                PromotionsByCustomerGroupsAndChannelLoader(info.context)
-                .load((group_ids, channel))
-                .then(
-                    lambda promotions: [
-                        ChannelContext(promotion, channel)
-                        for promotion in promotions
-                        if promotion is not None
-                    ]
-                )
-            )
-
         return None
 
 

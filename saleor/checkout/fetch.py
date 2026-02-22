@@ -75,21 +75,35 @@ class CheckoutLineInfo(LineInfo):
 
         # if price_override is set, it takes precedence over any other price for
         # further calculations
+
         if self.line.price_override is not None:
             return Money(self.line.price_override, self.line.currency)
 
+        discounted_price = self.line.undiscounted_unit_price
+
+        if (
+            self.line.price_discounted_override is not None
+            and self.line.price_discounted_override < discounted_price.amount
+        ):
+            discounted_price = Money(
+                self.line.price_discounted_override, self.line.currency
+            )
+
         if self.channel_listing and self.channel_listing.discounted_price is not None:
-            return self.channel_listing.discounted_price
+            if self.channel_listing.discounted_price.amount < discounted_price.amount:
+                return self.channel_listing.discounted_price
 
-        catalogue_discounts = self.get_catalogue_discounts()
-        total_price = self.undiscounted_unit_price * self.line.quantity
-        for discount in catalogue_discounts:
-            total_price -= discount.amount
+        return discounted_price
 
-        unit_price = max(
-            total_price / self.line.quantity, zero_money(self.line.currency)
-        )
-        return quantize_price(unit_price, self.line.currency)
+        # catalogue_discounts = self.get_catalogue_discounts()
+        # total_price = self.undiscounted_unit_price * self.line.quantity
+        # for discount in catalogue_discounts:
+        #     total_price -= discount.amount
+
+        # unit_price = max(
+        #     total_price / self.line.quantity, zero_money(self.line.currency)
+        # )
+        # return quantize_price(unit_price, self.line.currency)
 
     @cached_property
     def undiscounted_unit_price(self) -> Money:
@@ -459,7 +473,6 @@ def fetch_checkout_lines(
         "variant__channel_listings__channel",
         "variant__channel_listings__variantlistingpromotionrule__promotion_rule__promotion__translations",
         "variant__channel_listings__variantlistingpromotionrule__promotion_rule__translations",
-        "variant__channel_listings__variantlistingpromotionrule__promotion_rule__customer_groups",
         "discounts__promotion_rule__promotion",
     ]
     if prefetch_variant_attributes:
@@ -489,9 +502,7 @@ def fetch_checkout_lines(
         )
         translation_language_code = checkout.language_code
         rules_info = (
-            fetch_variant_rules_info(
-                variant_channel_listing, translation_language_code, checkout.user
-            )
+            fetch_variant_rules_info(variant_channel_listing, translation_language_code)
             if not line.is_gift
             else []
         )

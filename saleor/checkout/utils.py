@@ -111,7 +111,7 @@ def recalculate_checkout_discounts(
     Update line and checkout discounts from vouchers and promotions.
     Create or remove gift line if needed.
     """
-    create_checkout_line_discount_objects_for_catalogue_promotions(checkout_info, lines)
+    create_checkout_line_discount_objects_for_catalogue_promotions(lines)
     recalculate_checkout_discount(manager, checkout_info, lines)
 
 
@@ -377,7 +377,8 @@ def add_variants_to_checkout(
 
         if to_update:
             checkout_lines_bulk_update(
-                to_update, ["quantity", "price_override", "metadata"]
+                to_update,
+                ["quantity", "price_override", "price_discounted_override", "metadata"],
             )
 
         if to_create:
@@ -421,6 +422,7 @@ def _append_line_to_update(to_update, to_delete, line_data, replace, line):
         line.store_value_in_metadata(
             {data.key: data.value for data in line_data.metadata_list}
         )
+    update = False
     if line_data.quantity_to_update:
         quantity = line_data.quantity
         if quantity > 0:
@@ -428,11 +430,20 @@ def _append_line_to_update(to_update, to_delete, line_data, replace, line):
                 line.quantity = quantity
             else:
                 line.quantity += quantity
-            to_update.append(line)
+            update = True
+
     if line_data.custom_price_to_update:
         if line not in to_delete:
             line.price_override = line_data.custom_price
-            to_update.append(line)
+            update = True
+
+    if line_data.custom_price_discounted_to_update:
+        if line not in to_delete:
+            line.price_discounted_override = line_data.custom_price_discounted
+            update = True
+
+    if update:
+        to_update.append(line)
 
 
 def _append_line_to_delete(to_delete, line_data, line):
@@ -461,6 +472,7 @@ def _append_line_to_create(
             quantity=line_data.quantity,
             currency=checkout.currency,
             price_override=line_data.custom_price,
+            price_discounted_override=line_data.custom_price_discounted,
             undiscounted_unit_price_amount=variant_price_amount,
             prior_unit_price_amount=variant_prior_price_amount,
         )

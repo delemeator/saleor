@@ -69,6 +69,8 @@ class CheckoutLineData:
     quantity_to_update: bool = False
     custom_price: Decimal | None = None
     custom_price_to_update: bool = False
+    custom_price_discounted: Decimal | None = None
+    custom_price_discounted_to_update: bool = False
     metadata_list: list = field(default_factory=list)
 
 
@@ -426,6 +428,10 @@ def group_lines_input_on_add(
             line_data.custom_price = line["price"]
             line_data.custom_price_to_update = True
 
+        if "price_discounted" in line:
+            line_data.custom_price_discounted = line["price_discounted"]
+            line_data.custom_price_discounted_to_update = True
+
     grouped_checkout_lines_data += list(checkout_lines_data_map.values())
     return grouped_checkout_lines_data
 
@@ -475,6 +481,12 @@ def group_lines_input_data_on_update(
             line_data.custom_price = line["price"]
             line_data.custom_price_to_update = True
 
+        if line.get("price_discounted") != find_current_custom_price_discounted(
+            line_data.line_id, existing_lines_info
+        ):
+            line_data.custom_price_discounted = line.get("price_discounted")
+            line_data.custom_price_discounted_to_update = True
+
         line_data.metadata_list += metadata_list_from_input
 
     grouped_checkout_lines_data += list(checkout_lines_data_map.values())
@@ -487,7 +499,7 @@ def check_permissions_for_custom_prices(app, lines):
     Checkout line custom price can be changed only by app with
     handle checkout permission.
     """
-    if any("price" in line for line in lines) and (
+    if any("price" in line or "price_discounted" in line for line in lines) and (
         not app or not app.has_perm(CheckoutPermissions.HANDLE_CHECKOUTS)
     ):
         raise PermissionDenied(
@@ -540,6 +552,21 @@ def find_variant_id_when_line_parameter_used(
 
     line_info = list(filter(lambda x: (str(x.line.pk) == line_db_id), lines_info))
     return str(line_info[0].line.variant_id)
+
+
+def find_current_custom_price_discounted(
+    line_db_id: str | None, lines_info: list[CheckoutLineInfo]
+) -> None | Decimal:
+    """Return current custom_price_discounted for the line when lineId parameter was used."""
+    if not line_db_id or not lines_info:
+        return None
+
+    line_info = list(filter(lambda x: (str(x.line.pk) == line_db_id), lines_info))
+
+    if not line_info:
+        return None
+
+    return line_info[0].line.price_discounted_override
 
 
 def apply_gift_reward_if_applicable_on_checkout_creation(

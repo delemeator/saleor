@@ -51,9 +51,19 @@ def calculate_base_line_total_price(
 
     total_price = variant_price * line_info.line.quantity
 
+    overridden_price = (
+        Money(line_info.line.price_discounted_override, line_info.line.currency)
+        * line_info.line.quantity
+        if line_info.line.price_discounted_override
+        else None
+    )
+
     for discount in line_info.discounts:
         discount_amount = Money(discount.amount_value, line_info.line.currency)
         total_price -= discount_amount
+
+    if overridden_price is not None and overridden_price < total_price:
+        total_price = overridden_price
 
     if include_voucher and line_info.voucher:
         discount_amount = calculate_line_discount_amount_from_voucher(

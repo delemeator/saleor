@@ -3,10 +3,12 @@
     "ShippingMethodSchema": {
       "properties": {
         "id": {
+          "description": "ID of the shipping method.",
           "title": "Id",
           "type": "string"
         },
         "name": {
+          "description": "Name of the shipping method.",
           "maxLength": 100,
           "title": "Name",
           "type": "string"
@@ -21,15 +23,21 @@
               "type": "string"
             }
           ],
+          "description": "Non-negative price the customer pays for delivery using this shipping method.",
+          "examples": [
+            "10.00"
+          ],
           "title": "Amount"
         },
         "currency": {
+          "description": "Currency code for amount. Must match the currency of object for which the methods are defined.",
           "title": "Currency",
           "type": "string"
         },
         "maximum_delivery_days": {
           "anyOf": [
             {
+              "description": "Maximum delivery days for delivery promise of shipping carrier.",
               "minimum": 0,
               "type": "integer"
             },
@@ -43,6 +51,7 @@
         "minimum_delivery_days": {
           "anyOf": [
             {
+              "description": "Minimum delivery days for delivery promise of shipping carrier.",
               "minimum": 0,
               "type": "integer"
             },
@@ -56,6 +65,8 @@
         "description": {
           "anyOf": [
             {
+              "description": "Description of the shipping method.",
+              "maxLength": 255,
               "type": "string"
             },
             {
@@ -71,6 +82,14 @@
           },
           "default": {},
           "title": "Metadata",
+          "type": "object"
+        },
+        "private_metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Private Metadata",
           "type": "object"
         }
       },

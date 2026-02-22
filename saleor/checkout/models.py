@@ -441,6 +441,12 @@ class CheckoutLine(ModelWithMetadata):
         blank=True,
         null=True,
     )
+    price_discounted_override = models.DecimalField(
+        max_digits=settings.DEFAULT_MAX_DIGITS,
+        decimal_places=settings.DEFAULT_DECIMAL_PLACES,
+        blank=True,
+        null=True,
+    )
     currency = models.CharField(
         max_length=settings.DEFAULT_CURRENCY_CODE_LENGTH,
     )
