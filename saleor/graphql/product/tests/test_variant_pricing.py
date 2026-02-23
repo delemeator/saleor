@@ -35,7 +35,7 @@ fragment VariantPricingInfo on VariantPricingInfo {
       amount
     }
   }
-  appliedRule {
+  promotionRules {
     id
     promotion {
       name
@@ -73,8 +73,7 @@ def test_get_variant_pricing_on_promotion(
     discounted_value = rule.reward_value
     discounted_price = price.amount - discounted_value
     variant_listing.discounted_price_amount = discounted_price
-    variant_listing.applied_rule = rule
-    variant_listing.save(update_fields=["discounted_price_amount", "applied_rule"])
+    variant_listing.save(update_fields=["discounted_price_amount"])
 
     variables = {"channel": channel_USD.slug, "address": {"country": "US"}}
 
@@ -104,7 +103,7 @@ def test_get_variant_pricing_on_promotion(
     assert pricing["price"]["currency"] == price.currency
     assert pricing["price"]["net"]["amount"] == discounted_price
 
-    assert pricing["appliedRule"]["id"] is not None
+    assert pricing["promotionRules"][0]["id"] is not None
 
 
 def test_get_variant_pricing_not_on_promotion(api_client, product, channel_USD):

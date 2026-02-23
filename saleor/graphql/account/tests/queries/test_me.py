@@ -728,7 +728,6 @@ def test_me_query_promotions_success(
         reward_value=10,
     )
     rule.channels.add(channel_USD)
-    rule.customer_groups.add(customer_group)
 
     # when
     response = user_api_client.post_graphql(
@@ -766,7 +765,6 @@ def test_me_query_promotions_filters_by_customer_group(
         reward_value=10,
     )
     rule.channels.add(channel_USD)
-    rule.customer_groups.add(customer_group)
 
     # when
     response = user_api_client.post_graphql(
@@ -800,7 +798,6 @@ def test_me_query_promotions_filters_by_channel(
     )
     # Rule is added to USD, but we will query for PLN
     rule.channels.add(channel_USD)
-    rule.customer_groups.add(customer_group)
 
     # when
     # Querying for PLN channel

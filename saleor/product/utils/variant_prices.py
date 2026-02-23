@@ -128,7 +128,7 @@ def _update_or_create_listings(
     if changed_variants_listings_to_update:
         ProductVariantChannelListing.objects.bulk_update(
             sorted(changed_variants_listings_to_update, key=lambda listing: listing.id),
-            ["discounted_price_amount", "applied_rule"],
+            ["discounted_price_amount"],
         )
     if changed_variant_listing_promotion_rule_to_create:
         _create_variant_listing_promotion_rule(
@@ -142,11 +142,6 @@ def _update_or_create_listings(
             ),
             ["discount_amount"],
         )
-
-    # Clear applied_rule for listings that have rules deleted outside of this flow
-    ProductVariantChannelListing.objects.filter(applied_rule__isnull=False).exclude(
-        applied_rule_id__in=PromotionRule.objects.values("id")
-    ).update(applied_rule=None)
 
     manager = AnonymousPluginManagerLoader(SaleorContext()).load("Anonymous").get()
 
@@ -278,31 +273,22 @@ def _get_discounted_variants_prices_for_promotions(
         VariantChannelListingPromotionRule
     ] = []
     for variant_listing in variant_listings:
-        applied_discount, customer_group_discounts = (
-            calculate_discounted_price_for_promotions(
-                price=variant_listing.price,
-                rules_info_per_variant=rules_info_per_variant,
-                channel=channel,
-                variant_id=variant_listing.variant_id,
-            )
+        applied_discount = calculate_discounted_price_for_promotions(
+            price=variant_listing.price,
+            rules_info_per_variant=rules_info_per_variant,
+            channel=channel,
+            variant_id=variant_listing.variant_id,
         )
         discounted_variant_price = variant_listing.price
-        rule_ids_to_keep = {rule_id for rule_id, _ in customer_group_discounts}
 
-        applied_rule = None
+        rule_id = None
         if applied_discount:
             rule_id, discount = applied_discount
-            variant_listing_rule = variant_listing_to_listing_rule_per_rule_map[
-                variant_listing.id
-            ].get(rule_id)
-            if variant_listing_rule:
-                applied_rule = variant_listing_rule.promotion_rule
 
             discounted_variant_price -= discount
             discounted_variant_price = max(
                 discounted_variant_price, zero_money(discounted_variant_price.currency)
             )
-            rule_ids_to_keep.add(rule_id)
 
             _handle_discount_rule_id(
                 variant_listing,
@@ -314,28 +300,15 @@ def _get_discounted_variants_prices_for_promotions(
                 variant_listing_promotion_rule_to_create,
             )
 
-        for rule_id, discount in customer_group_discounts:
-            _handle_discount_rule_id(
-                variant_listing,
-                rule_id,
-                variant_listing_to_listing_rule_per_rule_map,
-                discount.amount,
-                channel.currency_code,
-                variant_listing_promotion_rule_to_update,
-                variant_listing_promotion_rule_to_create,
-            )
-
-        if (
-            variant_listing.discounted_price != discounted_variant_price
-            or variant_listing.applied_rule != applied_rule
-        ):
+        if variant_listing.discounted_price != discounted_variant_price:
             variant_listing.discounted_price_amount = discounted_variant_price.amount
-            variant_listing.applied_rule = applied_rule
             variants_listings_to_update.append(variant_listing)
 
-        VariantChannelListingPromotionRule.objects.filter(
-            variant_channel_listing_id=variant_listing.id
-        ).exclude(promotion_rule_id__in=rule_ids_to_keep).delete()
+            # delete variant listing - promotion rules relations that are not valid
+            # anymore
+            VariantChannelListingPromotionRule.objects.filter(
+                variant_channel_listing_id=variant_listing.id
+            ).exclude(promotion_rule_id=rule_id).delete()
 
         discounted_variants_price.append(discounted_variant_price)
 

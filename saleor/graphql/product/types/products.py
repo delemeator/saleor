@@ -218,9 +218,9 @@ class VariantPricingInfo(BasePricingInfo):
         TaxedMoney, description="The price prior to discount." + ADDED_IN_321
     )
 
-    applied_rule = graphene.Field(
+    promotion_rules = graphene.List(
         PromotionRulePublic,
-        description="The promotion rule that was applied to the variant.",
+        description="The promotion rules that were applied to the variant.",
     )
 
     # deprecated
@@ -731,10 +731,7 @@ class ProductVariant(ChannelContextType[models.ProductVariant]):
                             tax_rate=tax_rate,
                         )
                         return (
-                            VariantPricingInfo(
-                                **asdict(availability),
-                                applied_rule=variant_channel_listing.applied_rule,
-                            )
+                            VariantPricingInfo(**asdict(availability))
                             if availability
                             else None
                         )
