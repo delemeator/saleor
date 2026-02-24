@@ -93,17 +93,19 @@ class CheckoutLineInfo(LineInfo):
             if self.channel_listing.discounted_price.amount < discounted_price.amount:
                 return self.channel_listing.discounted_price
 
+        catalogue_discounts = self.get_catalogue_discounts()
+        total_price = self.undiscounted_unit_price * self.line.quantity
+        for discount in catalogue_discounts:
+            total_price -= discount.amount
+
+        unit_price = max(
+            total_price / self.line.quantity, zero_money(self.line.currency)
+        )
+
+        if unit_price < discounted_price:
+            return quantize_price(unit_price, self.line.currency)
+
         return discounted_price
-
-        # catalogue_discounts = self.get_catalogue_discounts()
-        # total_price = self.undiscounted_unit_price * self.line.quantity
-        # for discount in catalogue_discounts:
-        #     total_price -= discount.amount
-
-        # unit_price = max(
-        #     total_price / self.line.quantity, zero_money(self.line.currency)
-        # )
-        # return quantize_price(unit_price, self.line.currency)
 
     @cached_property
     def undiscounted_unit_price(self) -> Money:

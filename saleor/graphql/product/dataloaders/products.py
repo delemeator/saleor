@@ -285,6 +285,7 @@ class VariantChannelListingByVariantIdLoader(DataLoader):
         variant_channel_listings = (
             ProductVariantChannelListing.objects.using(self.database_connection_name)
             .filter(variant_id__in=keys)
+            .prefetch_related("applied_rule")
             .annotate_preorder_quantity_allocated()
             .order_by("pk")
         )
@@ -367,6 +368,7 @@ class VariantChannelListingByVariantIdAndChannelIdLoader(
             ProductVariantChannelListing.objects.all()
             .using(self.database_connection_name)
             .filter(**filter)
+            .prefetch_related("applied_rule")
             .annotate_preorder_quantity_allocated()
             .order_by("pk")
         )

@@ -4,6 +4,8 @@ from typing import Literal
 
 from prices import Money, MoneyRange, TaxedMoney, TaxedMoneyRange
 
+from saleor.discount.models import PromotionRule
+
 from ...product.models import ProductChannelListing, ProductVariantChannelListing
 from ...tax import TaxCalculationStrategy
 from ...tax.calculations import calculate_flat_rate_tax

@@ -572,7 +572,7 @@ def test_create_checkout_with_order_promotion(
 
     # when
     user_api_client.ensure_access_token()
-    with django_assert_num_queries(100):
+    with django_assert_num_queries(99):
         response = user_api_client.post_graphql(MUTATION_CHECKOUT_CREATE, variables)
 
     # then
@@ -1103,7 +1103,7 @@ def test_add_checkout_lines_with_reservations(
 
     user_api_client.ensure_access_token()
     # Adding multiple lines to checkout has same query count as adding one
-    with django_assert_num_queries(109):
+    with django_assert_num_queries(110):
         variables = {
             "id": Node.to_global_id("Checkout", checkout.pk),
             "lines": [new_lines[0]],
@@ -1167,7 +1167,7 @@ def test_add_checkout_lines_catalogue_discount_applies(
 
     # when
     user_api_client.ensure_access_token()
-    with django_assert_num_queries(103):
+    with django_assert_num_queries(100):
         response = user_api_client.post_graphql(MUTATION_CHECKOUT_LINES_ADD, variables)
 
     # then
@@ -1253,12 +1253,13 @@ def test_add_checkout_lines_multiple_catalogue_discount_applies(
 
     # when
     user_api_client.ensure_access_token()
-    with django_assert_num_queries(103):
+    with django_assert_num_queries(100):
         response = user_api_client.post_graphql(MUTATION_CHECKOUT_LINES_ADD, variables)
 
     # then
     content = get_graphql_content(response)
     data = content["data"]["checkoutLinesAdd"]
+
     assert not data["errors"]
     assert checkout.lines.count() == 4
     assert CheckoutLineDiscount.objects.count() == 4
