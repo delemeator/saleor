@@ -1103,7 +1103,7 @@ def test_add_checkout_lines_with_reservations(
 
     user_api_client.ensure_access_token()
     # Adding multiple lines to checkout has same query count as adding one
-    with django_assert_num_queries(110):
+    with django_assert_num_queries(109):
         variables = {
             "id": Node.to_global_id("Checkout", checkout.pk),
             "lines": [new_lines[0]],

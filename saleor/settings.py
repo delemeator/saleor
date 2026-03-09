@@ -1180,6 +1180,10 @@ ALLOWED_MIME_TYPES.update(
     json.loads(os.environ.get("UPLOAD_ADDITIONAL_ALLOWED_MIME_TYPES", "{}"))
 )
 
+CUSTOM_INVENTORY_TRACKING_LOGIC = get_bool_from_env(
+    "CUSTOM_INVENTORY_TRACKING_LOGIC", False
+)
+
 # Library `google-i18n-address` use `AddressValidationMetadata` form Google to provide address validation rules.
 # Patch `i18n` module to allows to override the default address rules.
 i18n_rules_override()

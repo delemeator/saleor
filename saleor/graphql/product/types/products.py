@@ -4,6 +4,7 @@ from dataclasses import asdict
 from decimal import Decimal
 
 import graphene
+from django.conf import settings
 from graphene import relay
 from promise import Promise
 
@@ -613,7 +614,10 @@ class ProductVariant(ChannelContextType[models.ProductVariant]):
 
             return channel_listing.then(calculate_available_per_channel)
 
-        if not root.node.track_inventory:
+        if (
+            not root.node.track_inventory
+            and not settings.CUSTOM_INVENTORY_TRACKING_LOGIC
+        ):
             return global_quantity_limit_per_checkout
 
         return AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
