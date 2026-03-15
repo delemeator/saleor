@@ -47,8 +47,8 @@ class CollectionRemoveProducts(BaseMutation):
         )
         collection.products.remove(*products)
         manager = get_plugin_manager_promise(info.context).get()
-        for product in products:
-            cls.call_event(manager.product_updated, product)
+        # for product in products:
+        #     cls.call_event(manager.product_updated, product)
 
         if products:
             channel_ids = models.ProductChannelListing.objects.filter(
