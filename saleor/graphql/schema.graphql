@@ -9317,6 +9317,11 @@ type Voucher implements Node & ObjectWithMetadata @doc(category: "Discounts") {
   """Determine minimum quantity of items for checkout."""
   minCheckoutItemsQuantity: Int
 
+  """
+  Determine if discounted products should be excluded from voucher application.
+  """
+  excludeDiscountedProducts: Boolean
+
   """List of categories this voucher applies to."""
   categories(
     """Return the elements in the list that come before the specified cursor."""
@@ -27933,6 +27938,11 @@ input VoucherInput @doc(category: "Discounts") {
 
   """Minimal quantity of checkout items required to apply the voucher."""
   minCheckoutItemsQuantity: Int
+
+  """
+  Determine if discounted products should be excluded from voucher application.
+  """
+  excludeDiscountedProducts: Boolean
 
   """Country codes that can be used with the shipping voucher."""
   countries: [String!]
