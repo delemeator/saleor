@@ -44,7 +44,7 @@ GiftCardManager = models.Manager.from_queryset(GiftCardQueryset)
 
 class GiftCard(ModelWithMetadata):
     code = models.CharField(
-        max_length=16, unique=True, validators=[MinLengthValidator(8)], db_index=True
+        max_length=32, unique=True, validators=[MinLengthValidator(8)], db_index=True
     )
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
