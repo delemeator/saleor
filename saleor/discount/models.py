@@ -123,6 +123,8 @@ class Voucher(ModelWithMetadata):
     collections = models.ManyToManyField("product.Collection", blank=True)
     categories = models.ManyToManyField("product.Category", blank=True)
 
+    exclude_discounted_products = models.BooleanField(default=False)
+
     objects = VoucherManager()
 
     class Meta:

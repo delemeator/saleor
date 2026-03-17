@@ -71,6 +71,10 @@ class VoucherInput(BaseInputObjectType):
     min_checkout_items_quantity = graphene.Int(
         description="Minimal quantity of checkout items required to apply the voucher."
     )
+    exclude_discounted_products = graphene.Boolean(
+        description="Determine if discounted products should be excluded from voucher "
+        "application.",
+    )
     countries = NonNullList(
         graphene.String,
         description="Country codes that can be used with the shipping voucher.",

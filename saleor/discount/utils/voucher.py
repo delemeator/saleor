@@ -233,12 +233,19 @@ def get_discounted_lines(
             line_collections = {
                 collection.pk for collection in line_info.collections if collection
             }
-            if line_info.variant and (
-                line_variant.pk in voucher_info.variant_pks
-                or line_product.pk in voucher_info.product_pks
-                or line_category
-                and line_category.pk in voucher_info.category_pks
-                or line_collections.intersection(voucher_info.collection_pks)
+            if (
+                line_info.variant
+                and (
+                    line_variant.pk in voucher_info.variant_pks
+                    or line_product.pk in voucher_info.product_pks
+                    or line_category
+                    and line_category.pk in voucher_info.category_pks
+                    or line_collections.intersection(voucher_info.collection_pks)
+                )
+                and (
+                    not voucher_info.voucher.exclude_discounted_products
+                    or not line_info.discounts
+                )
             ):
                 discounted_lines.append(line_info)
     else:

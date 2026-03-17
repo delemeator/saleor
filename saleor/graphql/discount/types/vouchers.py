@@ -126,6 +126,10 @@ class Voucher(ChannelContextType[models.Voucher]):
     min_checkout_items_quantity = graphene.Int(
         description="Determine minimum quantity of items for checkout."
     )
+    exclude_discounted_products = graphene.Boolean(
+        description="Determine if discounted products should be excluded from voucher "
+        "application.",
+    )
     categories = ConnectionField(
         CategoryCountableConnection,
         description="List of categories this voucher applies to.",
