@@ -128,6 +128,8 @@ class Command(BaseCommand):
             type=str,
         )
 
+        parser.add_argument("--update-existing", action="store_true")
+
     def parse_m_datetime(self, value):
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
             try:
@@ -326,9 +328,8 @@ class Command(BaseCommand):
 
         return None
 
-    def handle(self, m_url, m_username, m_password, **options):
+    def handle(self, m_url, m_username, m_password, update_existing=False, **options):
         today = date.today()
-        update_existing = options.get("update_existing", False)
 
         m = Magento(m_url, m_username, m_password)
         currency = self.get_default_currency()
