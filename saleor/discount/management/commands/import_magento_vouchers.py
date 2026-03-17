@@ -214,19 +214,6 @@ class Command(BaseCommand):
         if to_create:
             VoucherCode.objects.bulk_create(to_create, ignore_conflicts=True)
 
-    def get_default_currency(self):
-        currencies = set(Channel.objects.values_list("currency_code", flat=True))
-
-        if not currencies:
-            raise CommandError("No Saleor channels found")
-
-        if len(currencies) != 1:
-            raise CommandError(
-                f"Gift cards require one currency, but channels use multiple: {sorted(currencies)}"
-            )
-
-        return next(iter(currencies))
-
     def get_fixed_value_rules(self, m):
         return m.paged_get("/rest/V1/salesRules/search?")
 
@@ -332,7 +319,11 @@ class Command(BaseCommand):
         today = date.today()
 
         m = Magento(m_url, m_username, m_password)
-        currency = self.get_default_currency()
+
+        websites = m.request("GET", "/rest/V1/store/storeConfigs").json()
+        store_currencies = {
+            website["website_id"]: website["base_currency_code"] for website in websites
+        }
 
         rules = m.paged_get(
             "/rest/V1/salesRules/search?"
@@ -382,7 +373,9 @@ class Command(BaseCommand):
                     created_flag = self.import_coupon_as_gift_card(
                         rule=rule,
                         coupon=coupon,
-                        currency=currency,
+                        currency=store_currencies.get(
+                            rule.get("website_ids", [None])[0], "PLN"
+                        ),
                         update_existing=update_existing,
                     )
                     if created_flag:
