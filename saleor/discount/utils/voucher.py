@@ -15,7 +15,7 @@ from ...core.taxes import zero_money
 from ...core.utils.promo_code import InvalidPromoCode
 from ...order.models import Order, OrderLine
 from .. import DiscountType, VoucherType
-from ..interface import DiscountInfo, VoucherInfo
+from ..interface import DiscountInfo, VoucherInfo, fetch_voucher_info
 from ..models import (
     DiscountValueType,
     NotApplicable,
@@ -281,7 +281,8 @@ def validate_voucher_for_checkout(
     from ...checkout import base_calculations
     from ...checkout.utils import calculate_checkout_quantity
 
-    quantity = calculate_checkout_quantity(lines)
+    discounted_lines = get_discounted_lines(lines, fetch_voucher_info(voucher))
+    quantity = calculate_checkout_quantity(discounted_lines)
     subtotal = base_calculations.base_checkout_subtotal(
         lines,
         checkout_info.channel,
