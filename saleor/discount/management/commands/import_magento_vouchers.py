@@ -144,7 +144,7 @@ class Command(BaseCommand):
         dt = self.parse_m_datetime(value)
         return dt.date()
 
-    def get_or_create_percentage_voucher(self, rule):
+    def get_or_create_voucher(self, rule, shipping=False):
         start_date = (
             self.parse_m_date(rule.get("from_date"))
             if rule.get("from_date")
@@ -157,7 +157,7 @@ class Command(BaseCommand):
         voucher, created = Voucher.objects.get_or_create(
             name=rule["name"],
             defaults={
-                "type": VoucherType.ENTIRE_ORDER,
+                "type": VoucherType.SHIPPING if shipping else VoucherType.ENTIRE_ORDER,
                 "name": rule["name"],
                 "start_date": start_date or timezone.now(),
                 "end_date": end_date,
@@ -243,10 +243,10 @@ class Command(BaseCommand):
         return coupons_by_rule_id
 
     def get_balances(self, rule, coupon):
-        amount = rule.get("discount_amount", 0)
+        amount = rule.get("discount_amount", 0) or 0
         times_used = int(coupon.get("times_used") or 0)
 
-        current_balance = Decimal("0") if times_used > 0 else amount
+        current_balance = 0 if times_used > 0 else amount
         return amount, current_balance
 
     @transaction.atomic
@@ -287,7 +287,10 @@ class Command(BaseCommand):
                         changed = True
 
                 if changed:
-                    existing.save(update_fields=list(defaults.keys()))
+                    try:
+                        existing.save(update_fields=list(defaults.keys()))
+                    except Exception as e:
+                        breakpoint()
                     self.stdout.write(self.style.SUCCESS(f"Updated gift card {code}"))
                 else:
                     self.stdout.write(f"Gift card {code} already up to date")
@@ -295,18 +298,19 @@ class Command(BaseCommand):
                 self.assign_gift_card_tags(existing)
             else:
                 self.stdout.write(f"Gift card {code} already exists, skipping")
-            return False
-        gift_card = GiftCard.objects.create(
-            code=code,
-            **defaults,
-        )
-        self.assign_gift_card_tags(gift_card)
-        self.stdout.write(self.style.SUCCESS(f"Created gift card {code}"))
-        return True
+        elif current_balance > 0:
+            gift_card = GiftCard.objects.create(
+                code=code,
+                **defaults,
+            )
+            self.assign_gift_card_tags(gift_card)
+            self.stdout.write(self.style.SUCCESS(f"Created gift card {code}"))
+            return True
+        return False
 
     @transaction.atomic
     def import_percentage_rule_as_voucher(self, rule, coupons):
-        voucher = self.get_or_create_percentage_voucher(rule)
+        voucher = self.get_or_create_voucher(rule)
         self.ensure_voucher_in_all_channels(voucher, rule)
         self.ensure_voucher_codes(voucher, coupons)
         self.stdout.write(
@@ -315,8 +319,21 @@ class Command(BaseCommand):
             )
         )
 
+    @transaction.atomic
+    def import_shipping_rule_as_voucher(self, rule, coupons):
+        voucher = self.get_or_create_voucher(rule, shipping=True)
+        self.ensure_voucher_codes(voucher, coupons)
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Imported shipping rule {rule['rule_id']} as voucher {voucher.name}"
+            )
+        )
+
     def get_rule_kind(self, rule):
         simple_action = rule.get("simple_action")
+
+        if "DOSTAWA" in rule["name"] and rule["apply_to_shipping"]:
+            return "shipping"
 
         if simple_action == "cart_fixed":
             return "gift_card"
@@ -385,9 +402,6 @@ class Command(BaseCommand):
             "searchCriteria[filterGroups][1][filters][0][conditionType]=null"
         )
 
-        # json.dump(rules, open("rules.json", "w"))
-        # rules = json.load(open("rules.json"))
-
         rules = [
             rule
             for rule in rules
@@ -399,8 +413,7 @@ class Command(BaseCommand):
         coupons = []
         for rule in rules:
             coupons.extend(m.paged_get(build_rule_id_coupon_endpoint(rule["rule_id"])))
-        # json.dump(coupons, open("coupons.json", "w"))
-        # coupons = json.load(open("coupons.json"))
+
         coupons = [
             coupon
             for coupon in coupons
@@ -444,6 +457,20 @@ class Command(BaseCommand):
                     skipped += 1
                 else:
                     self.import_percentage_rule_as_voucher(rule, relevant_coupons)
+                    imported_vouchers += 1
+
+            elif kind == "shipping":
+                relevant_coupons = coupons_by_rule_id.get(rule["rule_id"], [])
+
+                if not relevant_coupons:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Skipping shipping rule {rule['rule_id']} with no coupons"
+                        )
+                    )
+                    skipped += 1
+                else:
+                    self.import_shipping_rule_as_voucher(rule, relevant_coupons)
                     imported_vouchers += 1
 
             else:
