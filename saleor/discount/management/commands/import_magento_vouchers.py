@@ -1,4 +1,5 @@
 import json
+import re
 from collections import defaultdict
 from datetime import date, datetime, timezone
 
@@ -10,7 +11,7 @@ from graphene import Decimal
 from saleor.channel.models import Channel
 from saleor.discount import DiscountValueType, VoucherType
 from saleor.discount.models import Voucher, VoucherChannelListing, VoucherCode
-from saleor.order.models import GiftCard
+from saleor.giftcard.models import GiftCard, GiftCardTag
 
 
 class Magento:
@@ -144,8 +145,14 @@ class Command(BaseCommand):
         return dt.date()
 
     def get_or_create_percentage_voucher(self, rule):
-        start_date = self.parse_m_date(rule.get("from_date"))
-        end_date = self.parse_m_date(rule.get("to_date"))
+        start_date = (
+            self.parse_m_date(rule.get("from_date"))
+            if rule.get("from_date")
+            else date.today()
+        )
+        end_date = (
+            self.parse_m_date(rule.get("to_date")) if rule.get("to_date") else None
+        )
 
         voucher, created = Voucher.objects.get_or_create(
             name=rule["name"],
@@ -280,24 +287,24 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS(f"Updated gift card {code}"))
                 else:
                     self.stdout.write(f"Gift card {code} already up to date")
+
+                self.assign_gift_card_tags(existing)
             else:
                 self.stdout.write(f"Gift card {code} already exists, skipping")
             return False
-        try:
-            GiftCard.objects.create(
-                code=code,
-                **defaults,
-            )
-        except Exception as e:
-            breakpoint()
+        gift_card = GiftCard.objects.create(
+            code=code,
+            **defaults,
+        )
+        self.assign_gift_card_tags(gift_card)
         self.stdout.write(self.style.SUCCESS(f"Created gift card {code}"))
         return True
 
     @transaction.atomic
-    def import_percentage_rule_as_voucher(self, rule, coupons_by_rule_id):
+    def import_percentage_rule_as_voucher(self, rule, coupons):
         voucher = self.get_or_create_percentage_voucher(rule)
         self.ensure_voucher_in_all_channels(voucher, rule)
-        self.ensure_voucher_codes(voucher, coupons_by_rule_id.get(rule["rule_id"], []))
+        self.ensure_voucher_codes(voucher, coupons)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Imported percentage rule {rule['rule_id']} as voucher {voucher.name}"
@@ -315,6 +322,35 @@ class Command(BaseCommand):
 
         return None
 
+    def get_gift_card_tag_name(self, code: str) -> str | None:
+        code = (code or "").strip()
+        if not code or "-" not in code:
+            return None
+
+        prefix = code.split("-", 1)[0].strip().upper()
+        if not prefix:
+            return None
+
+        if "REKL" in prefix:
+            return "reklamacja"
+
+        if "MB" in prefix:
+            return "MyBenefit"
+
+        if "BCAN" in prefix:
+            return "BonCard"
+
+        tag = re.sub(r"\d+", "", prefix).strip()
+        return tag or None
+
+    def assign_gift_card_tags(self, gift_card: GiftCard):
+        tag_name = self.get_gift_card_tag_name(gift_card.code)
+        if not tag_name:
+            return
+
+        tag, _ = GiftCardTag.objects.get_or_create(name=tag_name)
+        gift_card.tags.add(tag)
+
     def handle(self, m_url, m_username, m_password, update_existing=False, **options):
         today = date.today()
 
@@ -330,10 +366,18 @@ class Command(BaseCommand):
             "searchCriteria[filterGroups][0][filters][0][field]=is_active&"
             "searchCriteria[filterGroups][0][filters][0][value]=1&"
             "searchCriteria[filterGroups][0][filters][0][conditionType]=eq&"
-            "searchCriteria[filterGroups][0][filters][0][field]=to_date&"
-            f"searchCriteria[filterGroups][0][filters][0][value]={today}&"
-            "searchCriteria[filterGroups][0][filters][0][conditionType]=gt&"
+            "searchCriteria[filterGroups][1][filters][0][field]=to_date&"
+            f"searchCriteria[filterGroups][1][filters][0][value]={today}&"
+            "searchCriteria[filterGroups][1][filters][0][conditionType]=gt&"
+        ) + m.paged_get(
+            "/rest/V1/salesRules/search?"
+            "searchCriteria[filterGroups][0][filters][0][field]=is_active&"
+            "searchCriteria[filterGroups][0][filters][0][value]=1&"
+            "searchCriteria[filterGroups][0][filters][0][conditionType]=eq&"
+            "searchCriteria[filterGroups][1][filters][0][field]=to_date&"
+            "searchCriteria[filterGroups][1][filters][0][conditionType]=null"
         )
+
         # json.dump(rules, open("rules.json", "w"))
         # rules = json.load(open("rules.json"))
 
@@ -382,8 +426,18 @@ class Command(BaseCommand):
                         imported_gift_cards += 1
 
             elif kind == "voucher":
-                self.import_percentage_rule_as_voucher(rule, coupons_by_rule_id)
-                imported_vouchers += 1
+                relevant_coupons = coupons_by_rule_id.get(rule["rule_id"], [])
+
+                if not relevant_coupons:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Skipping percentage rule {rule['rule_id']} with no coupons"
+                        )
+                    )
+                    skipped += 1
+                else:
+                    self.import_percentage_rule_as_voucher(rule, relevant_coupons)
+                    imported_vouchers += 1
 
             else:
                 skipped += 1
