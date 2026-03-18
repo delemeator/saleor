@@ -262,7 +262,11 @@ class Command(BaseCommand):
             )
             return False
 
-        expiry_date = self.parse_m_date(rule.get("to_date"))
+        expiry_date = (
+            self.parse_m_date(rule.get("to_date"))
+            if rule.get("to_date")
+            else date(2027, 12, 31)
+        )
         initial_balance, current_balance = self.get_balances(rule, coupon)
 
         defaults = {
@@ -339,6 +343,9 @@ class Command(BaseCommand):
 
         if "BCAN" in prefix:
             return "BonCard"
+
+        if "KAP" in prefix:
+            return "karta prezentowa"
 
         tag = re.sub(r"\d+", "", prefix).strip()
         return tag or None
