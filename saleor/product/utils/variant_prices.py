@@ -143,16 +143,16 @@ def _update_or_create_listings(
             ["discount_amount"],
         )
 
-    manager = AnonymousPluginManagerLoader(SaleorContext()).load("Anonymous").get()
+    # manager = AnonymousPluginManagerLoader(SaleorContext()).load("Anonymous").get()
 
-    products = {listing.product for listing in changed_products_listings_to_update}
-    variants = {listing.variant for listing in changed_variants_listings_to_update}
+    # products = {listing.product for listing in changed_products_listings_to_update}
+    # variants = {listing.variant for listing in changed_variants_listings_to_update}
 
-    for product in products:
-        call_event(manager.product_updated, product)
+    # for product in products:
+    #     call_event(manager.product_updated, product)
 
-    for variant in variants:
-        call_event(manager.product_variant_updated, variant)
+    # for variant in variants:
+    #     call_event(manager.product_variant_updated, variant)
 
 
 def _create_variant_listing_promotion_rule(variant_listing_promotion_rule_to_create):
