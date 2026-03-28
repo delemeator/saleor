@@ -497,6 +497,7 @@ class Order(ModelWithMetadata, ModelWithExternalReference):
             FulfillmentStatus.REPLACED,
             FulfillmentStatus.REFUNDED_AND_RETURNED,
             FulfillmentStatus.RETURNED,
+            FulfillmentStatus.WAITING_FOR_APPROVAL,
         ]
         return (
             not self.fulfillments.exclude(
