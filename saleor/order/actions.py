@@ -418,8 +418,13 @@ def cancel_order(
 
     Release allocation of unfulfilled order items.
     """
+    pending_fulfillments = Fulfillment.objects.filter(
+        status=FulfillmentStatus.WAITING_FOR_APPROVAL, order=order
+    )
     # transaction ensures proper allocation and event triggering
     with traced_atomic_transaction():
+        for fulfillment in pending_fulfillments:
+            cancel_fulfillment(fulfillment, user, app, None, manager)
         events.order_canceled_event(order=order, user=user, app=app)
         deallocate_stock_for_orders([order.id], manager)
         order.status = OrderStatus.CANCELED
@@ -783,7 +788,7 @@ def fulfillment_tracking_updated(
 
 def cancel_fulfillment(
     fulfillment: Fulfillment,
-    user: User,
+    user: User | None,
     app: Optional["App"],
     warehouse: Optional["Warehouse"],
     manager: "PluginsManager",
