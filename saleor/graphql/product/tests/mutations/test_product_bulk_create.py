@@ -1,12 +1,14 @@
 import datetime
 import json
 import os
+from io import BytesIO
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import graphene
 import PIL
 import pytest
+from measurement.measures import Weight
 
 from .....attribute.tests.model_helpers import (
     get_product_attribute_values,
@@ -983,8 +985,10 @@ def test_product_bulk_create_with_media_image_with_invalid_exif(
     assert len(error_1) == 1
 
 
+@patch("saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient")
 @pytest.mark.vcr
 def test_product_bulk_create_with_media_with_media_url(
+    mock_HTTPClient,
     staff_api_client,
     product_type,
     category,
@@ -993,6 +997,9 @@ def test_product_bulk_create_with_media_with_media_url(
     media_root,
 ):
     # given
+    mock_response = Mock()
+    mock_response.headers.get = Mock(return_value="text/html; charset=utf-8")
+    mock_HTTPClient.send_request.return_value.__enter__.return_value = mock_response
     description_json_string = json.dumps(description_json)
     product_type_id = graphene.Node.to_global_id("ProductType", product_type.pk)
     category_id = graphene.Node.to_global_id("Category", category.pk)
@@ -1077,21 +1084,21 @@ def test_product_bulk_create_with_media_with_media_url(
     )
 
 
-@patch(
-    "saleor.graphql.product.bulk_mutations.product_bulk_create.is_image_url",
-    return_value=False,
-)
+@patch("saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient")
 @patch(
     "saleor.graphql.product.bulk_mutations.product_bulk_create.get_oembed_data",
 )
 def test_product_bulk_create_with_media_with_media_url_invalid_provider(
     mocked_get_oembed_data,
-    _mocked_is_image_url,
+    mock_HTTPClient,
     staff_api_client,
     product_type,
     permission_manage_products,
 ):
     # given
+    mock_response = Mock()
+    mock_response.headers.get = Mock(return_value="text/plain")
+    mock_HTTPClient.send_request.return_value.__enter__.return_value = mock_response
     mocked_get_oembed_data.side_effect = UnsupportedMediaProviderException()
 
     product_type_id = graphene.Node.to_global_id("ProductType", product_type.pk)
@@ -1209,9 +1216,7 @@ def test_product_bulk_create_with_media_with_media_url_invalid_image_type(
     assert len(error_1) == 1
 
 
-@patch(
-    "saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient",
-)
+@patch("saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient")
 def test_product_bulk_create_with_media_invalid_image_file_fetch_only_header(
     mock_HTTPClient,
     staff_api_client,
@@ -1222,7 +1227,7 @@ def test_product_bulk_create_with_media_invalid_image_file_fetch_only_header(
     # given
     mock_response = Mock()
     mock_response.headers = Mock()
-    mock_response.headers.get = Mock(return_value="text/plain")
+    mock_response.headers.get = Mock(return_value="image/not-supported")
     mock_response.raw = Mock()
     mock_response.raw.read = Mock(return_value=b"fake_image_data")
     mock_HTTPClient.send_request.return_value.__enter__.return_value = mock_response
@@ -1329,6 +1334,56 @@ def test_product_bulk_create_with_media_image_file_is_fetched_only_once(
         assert img.format == "PNG"  # Ensure the image format is PNG
         assert img.size[0] > 0  # Ensure the image has dimensions
         assert img.size[1] > 0  # Ensure the image has dimensions
+
+
+@patch("saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient")
+def test_product_bulk_create_with_no_extension_media_url(
+    mock_HTTPClient,
+    staff_api_client,
+    product_type,
+    category,
+    permission_manage_products,
+    media_root,
+):
+    # given
+    mock_response = Mock()
+    mock_response.headers.get = Mock(return_value="image/png")
+    # generate PNG image content
+    image_content = BytesIO()
+    PIL.Image.new("RGB", size=(100, 100)).save(image_content, format="PNG")
+    image_content = image_content.read()
+    mock_response.content = image_content
+    mock_HTTPClient.send_request.return_value.__enter__.return_value = mock_response
+    variables = [
+        {
+            "productType": graphene.Node.to_global_id("ProductType", product_type.pk),
+            "category": graphene.Node.to_global_id("Category", category.pk),
+            "name": "test name 1",
+            "media": [
+                {
+                    "mediaUrl": "https://saleor.io/image-path",
+                }
+            ],
+        },
+    ]
+
+    # when
+    response = staff_api_client.post_graphql(
+        PRODUCT_BULK_CREATE_MUTATION,
+        variables={"products": variables},
+        permissions=[permission_manage_products],
+    )
+    content = get_graphql_content(response)["data"]["productBulkCreate"]
+
+    # then
+    assert not content["results"][0]["errors"]
+    # validate image file
+    _, product_id = graphene.Node.from_global_id(content["results"][0]["product"]["id"])
+    product_image = Product.objects.get(id=product_id).media.first()
+    assert product_image.image.name.startswith("products/image-path_")
+    assert product_image.image.name.endswith(".png")
+    with product_image.image.open("rb") as img:
+        assert img.read() == image_content
 
 
 def test_product_bulk_create_with_attributes(
@@ -2133,39 +2188,75 @@ def test_product_bulk_create_with_variants(
     size_attr_id = graphene.Node.to_global_id("Attribute", size_attribute.id)
     non_existent_attr_value = "The cake is a lie"
 
+    track_inventory_prod_1 = True
+    weight_prod_1 = 2.5
+    quantity_limit_prod_1 = 5
+    metadata_key = "md key"
+    metadata_value_prod_1 = "md value prod 1"
+    private_metadata_key = "private md key"
+    private_metadata_value_prod_1 = "private md value prod 1"
     sku_1 = str(uuid4())[:12]
     variant_1_name = "new-variant-1-name"
+    ext_ref_1 = "ext-ref-variant-1"
 
     sku_2 = str(uuid4())[:12]
     variant_2_name = "new-variant-2-name"
+    ext_ref_2 = "ext-ref-variant-2"
 
     sku_3 = str(uuid4())[:12]
     variant_3_name = "new-variant-3-name"
+    track_inventory_variant_3 = False
+    weight_variant_3 = 3.0
+    quantity_limit_variant_3 = 10
+    metadata_value_variant_3 = "md value variant 3"
+    private_metadata_value_variant_3 = "private md value variant 3"
+    ext_ref_3 = "ext-ref-variant-3"
 
     variants_prod_1 = [
         {
             "sku": sku_1,
-            "weight": 2.5,
-            "trackInventory": True,
+            "weight": weight_prod_1,
+            "trackInventory": track_inventory_prod_1,
             "name": variant_1_name,
             "attributes": [{"id": size_attr_id, "values": [non_existent_attr_value]}],
+            "quantityLimitPerCustomer": quantity_limit_prod_1,
+            "externalReference": ext_ref_1,
+            "metadata": [{"key": metadata_key, "value": metadata_value_prod_1}],
+            "privateMetadata": [
+                {"key": private_metadata_key, "value": private_metadata_value_prod_1}
+            ],
         },
         {
             "sku": sku_2,
-            "weight": 2.5,
-            "trackInventory": True,
+            "weight": weight_prod_1,
+            "trackInventory": track_inventory_prod_1,
             "name": variant_2_name,
             "attributes": [{"id": size_attr_id, "values": [non_existent_attr_value]}],
+            "quantityLimitPerCustomer": quantity_limit_prod_1,
+            "externalReference": ext_ref_2,
+            "metadata": [{"key": metadata_key, "value": metadata_value_prod_1}],
+            "privateMetadata": [
+                {"key": private_metadata_key, "value": private_metadata_value_prod_1}
+            ],
         },
     ]
 
     variants_prod_2 = [
         {
             "sku": sku_3,
-            "weight": 2.5,
-            "trackInventory": True,
+            "weight": weight_variant_3,
+            "trackInventory": track_inventory_variant_3,
             "name": variant_3_name,
             "attributes": [{"id": size_attr_id, "values": [non_existent_attr_value]}],
+            "quantityLimitPerCustomer": quantity_limit_variant_3,
+            "externalReference": ext_ref_3,
+            "metadata": [{"key": metadata_key, "value": metadata_value_variant_3}],
+            "privateMetadata": [
+                {
+                    "key": private_metadata_key,
+                    "value": private_metadata_value_variant_3,
+                }
+            ],
         }
     ]
 
@@ -2218,6 +2309,14 @@ def test_product_bulk_create_with_variants(
     for variant in product_1_variants:
         assert variant.name in [variant_1_name, variant_2_name]
         assert variant.sku in [sku_1, sku_2]
+        assert variant.track_inventory == track_inventory_prod_1
+        assert variant.weight == Weight(kg=weight_prod_1)
+        assert variant.quantity_limit_per_customer == quantity_limit_prod_1
+        assert variant.external_reference in [ext_ref_1, ext_ref_2]
+        assert variant.metadata == {metadata_key: metadata_value_prod_1}
+        assert variant.private_metadata == {
+            private_metadata_key: private_metadata_value_prod_1
+        }
         attribute_assignment = variant.attributes.first()
         assert variant.attributes.count() == 1
         assert attribute_assignment.attribute == size_attribute
@@ -2226,6 +2325,14 @@ def test_product_bulk_create_with_variants(
     for variant in product_2_variants:
         assert variant.name == variant_3_name
         assert variant.sku == sku_3
+        assert variant.track_inventory == track_inventory_variant_3
+        assert variant.weight == Weight(kg=weight_variant_3)
+        assert variant.quantity_limit_per_customer == quantity_limit_variant_3
+        assert variant.external_reference == ext_ref_3
+        assert variant.metadata == {metadata_key: metadata_value_variant_3}
+        assert variant.private_metadata == {
+            private_metadata_key: private_metadata_value_variant_3
+        }
         attribute_assignment = variant.attributes.first()
         assert variant.attributes.count() == 1
         assert attribute_assignment.attribute == size_attribute
@@ -3168,3 +3275,84 @@ def test_product_bulk_create_with_media_incorrect_alt(
     assert error_2[0]["path"] == "media.0.alt"
     assert len(error_2) == 1
     assert data["count"] == 0
+
+
+def test_product_bulk_create_with_media_when_alt_is_null(
+    staff_api_client,
+    product_type,
+    category,
+    permission_manage_products,
+    media_root,
+):
+    # given
+    image_file, image_name = create_image()
+    variables = [
+        {
+            "productType": graphene.Node.to_global_id("ProductType", product_type.pk),
+            "category": graphene.Node.to_global_id("Category", category.pk),
+            "name": "test name 1",
+            "media": [
+                {
+                    "alt": None,
+                    "image": image_name,
+                }
+            ],
+        },
+    ]
+
+    # when
+    body = get_multipart_request_body_with_multiple_files(
+        PRODUCT_BULK_CREATE_MUTATION,
+        {"products": variables},
+        [image_file],
+        {0: ["variables.products.0.media.0.image"]},
+    )
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)["data"]["productBulkCreate"]
+
+    # then
+    assert not content["results"][0]["errors"]
+    assert content["results"][0]["product"]["media"][0]["alt"] == ""
+
+
+@patch("saleor.graphql.product.bulk_mutations.product_bulk_create.HTTPClient")
+def test_product_bulk_create_with_media_url_when_alt_is_null(
+    mock_HTTPClient,
+    staff_api_client,
+    product_type,
+    category,
+    permission_manage_products,
+    media_root,
+):
+    # given
+    image_file, _ = create_image()
+    mock_response = Mock()
+    mock_response.headers.get.return_value = image_file.content_type
+    mock_response.content = image_file.read()
+    mock_HTTPClient.send_request.return_value.__enter__.return_value = mock_response
+    variables = [
+        {
+            "productType": graphene.Node.to_global_id("ProductType", product_type.pk),
+            "category": graphene.Node.to_global_id("Category", category.pk),
+            "name": "test name 1",
+            "media": [
+                {
+                    "alt": None,
+                    "mediaUrl": "https://saleor.io/image-path",
+                }
+            ],
+        },
+    ]
+
+    # when
+    response = staff_api_client.post_graphql(
+        PRODUCT_BULK_CREATE_MUTATION,
+        variables={"products": variables},
+        permissions=[permission_manage_products],
+    )
+    content = get_graphql_content(response)["data"]["productBulkCreate"]
+
+    # then
+    assert not content["results"][0]["errors"]
+    assert content["results"][0]["product"]["media"][0]["alt"] == ""

@@ -203,6 +203,11 @@ class Payment(ModelObjectType[models.Payment]):
     partial = graphene.Boolean(
         required=True,
         description="Informs whether this is a partial payment.",
+        deprecation_reason=(
+            "This field is reserved for the Adyen Gateway plugin. "
+            "For other gateways, its value is always `false`. "
+            "This field will be removed in 3.23 along with the plugin."
+        ),
     )
     psp_reference = graphene.String(
         required=False, description="PSP reference of the payment."
@@ -799,6 +804,12 @@ class TransactionItem(ModelObjectType[models.TransactionItem]):
             return model.objects.get(lookup)
         except model.DoesNotExist:
             return None
+
+
+class TransactionCountableConnection(CountableConnection):
+    class Meta:
+        doc_category = DOC_CATEGORY_PAYMENTS
+        node = TransactionItem
 
 
 class GatewayConfigLine(BaseObjectType):

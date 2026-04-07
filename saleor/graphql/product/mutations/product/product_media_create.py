@@ -1,4 +1,5 @@
 import graphene
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from .....core.exceptions import UnsupportedMediaProviderException
@@ -16,7 +17,8 @@ from ....core.types import BaseInputObjectType, ProductError, Upload
 from ....core.utils import create_file_from_response
 from ....core.validators.file import (
     clean_image_file,
-    is_image_url,
+    get_mime_type,
+    is_image_mimetype,
     is_valid_image_content_type,
 )
 from ....plugins.dataloaders import get_plugin_manager_promise
@@ -86,6 +88,16 @@ class ProductMediaCreate(BaseMutation):
                 }
             )
 
+        if not data.get("product"):
+            raise ValidationError(
+                {
+                    "product": ValidationError(
+                        "Product ID is required.",
+                        code=ProductErrorCode.REQUIRED.value,
+                    )
+                }
+            )
+
         if alt and len(alt) > ALT_CHAR_LIMIT:
             raise ValidationError(
                 {
@@ -109,7 +121,8 @@ class ProductMediaCreate(BaseMutation):
             qs=models.Product.objects.all(),
         )
 
-        alt = input.get("alt", "")
+        # Replace null alt value with an empty string to satisfy DB constraints
+        alt = input.get("alt") or ""
         media_url = input.get("media_url")
         media = None
         if img_data := input.get("image"):
@@ -122,15 +135,16 @@ class ProductMediaCreate(BaseMutation):
             # Remote URLs can point to the images or oembed data.
             # In case of images, file is downloaded. Otherwise we keep only
             # URL to remote media.
-            if is_image_url(media_url):
-                with HTTPClient.send_request(
-                    "GET", media_url, stream=True, allow_redirects=False
-                ) as image_data:
-                    content_type = image_data.headers.get("content-type")
-                    if is_valid_image_content_type(content_type):
-                        filename = get_filename_from_url(media_url)
-                        image_file = create_file_from_response(image_data, filename)
-                    else:
+            with HTTPClient.send_request(
+                "GET",
+                media_url,
+                stream=True,
+                allow_redirects=False,
+                timeout=settings.COMMON_REQUESTS_TIMEOUT,
+            ) as image_data:
+                mime_type = get_mime_type(image_data.headers.get("content-type"))
+                if is_image_mimetype(mime_type):
+                    if not is_valid_image_content_type(mime_type):
                         raise ValidationError(
                             {
                                 "media_url": ValidationError(
@@ -139,12 +153,14 @@ class ProductMediaCreate(BaseMutation):
                                 )
                             }
                         )
-                media = product.media.create(
-                    image=image_file,
-                    alt=alt,
-                    type=ProductMediaTypes.IMAGE,
-                )
-            else:
+                    filename = get_filename_from_url(media_url, mime_type)
+                    image_file = create_file_from_response(image_data, filename)
+                    media = product.media.create(
+                        image=image_file,
+                        alt=alt,
+                        type=ProductMediaTypes.IMAGE,
+                    )
+            if media is None:
                 try:
                     oembed_data, media_type = get_oembed_data(
                         media_url,

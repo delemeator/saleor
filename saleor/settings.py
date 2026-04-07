@@ -489,13 +489,7 @@ DEFAULT_MAX_EMAIL_DISPLAY_NAME_LENGTH = 78
 
 COUNTRIES_OVERRIDE = {
     "EU": "European Union",
-    "XK": {
-        "name": "Kosovo",
-        "alpha3": "XXK",
-        "ioc_code": "KOS",
-        "numeric": "383",
-        "numeric_padded": "0383",
-    },
+    "XK": "Kosovo",
 }
 
 MAX_USER_ADDRESSES = int(os.environ.get("MAX_USER_ADDRESSES", 100))
@@ -1023,6 +1017,11 @@ COLLECTION_PRODUCT_UPDATED_QUEUE_NAME = os.environ.get(
 # Queue name for execution of automatic checkout completion
 AUTOMATIC_CHECKOUT_COMPLETION_QUEUE_NAME = os.environ.get(
     "AUTOMATIC_CHECKOUT_COMPLETION_QUEUE_NAME", None
+)
+
+# Queue name for Celery data migration tasks
+DATA_MIGRATIONS_TASKS_QUEUE_NAME = os.environ.get(
+    "DATA_MIGRATIONS_TASKS_QUEUE_NAME", None
 )
 
 # Lock time for request password reset mutation per user (seconds)

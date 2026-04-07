@@ -1,7 +1,10 @@
+from django.conf import settings
+from django.db import transaction
 from django.db.models import Exists, OuterRef
 
 from ....account.models import Address
 from ....celeryconf import app
+from ....checkout.lock_objects import checkout_qs_select_for_update
 from ....checkout.models import Checkout
 from ....core.db.connection import allow_writer
 from ....order.models import Order
@@ -14,7 +17,7 @@ BILLING_FIELD = "billing_address"
 SHIPPING_FIELD = "shipping_address"
 
 
-@app.task
+@app.task(queue=settings.DATA_MIGRATIONS_TASKS_QUEUE_NAME)
 @allow_writer()
 def fix_shared_address_instances_task(field=BILLING_FIELD):
     """Fix shared address instances between checkouts and orders.
@@ -45,6 +48,12 @@ def fix_shared_address_instances_task(field=BILLING_FIELD):
 
     for checkout, address in zip(checkout_instances, addresses, strict=True):
         setattr(checkout, field, address)
-    Checkout.objects.bulk_update(checkout_instances, [field])
+    with transaction.atomic():
+        list(
+            checkout_qs_select_for_update()
+            .filter(pk__in=[c.pk for c in checkout_instances])
+            .values_list("pk", flat=True)
+        )
+        Checkout.objects.bulk_update(checkout_instances, [field])
 
     fix_shared_address_instances_task.delay(field=field)

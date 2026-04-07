@@ -287,10 +287,7 @@ class Command(BaseCommand):
                         changed = True
 
                 if changed:
-                    try:
-                        existing.save(update_fields=list(defaults.keys()))
-                    except Exception as e:
-                        breakpoint()
+                    existing.save(update_fields=list(defaults.keys()))
                     self.stdout.write(self.style.SUCCESS(f"Updated gift card {code}"))
                 else:
                     self.stdout.write(f"Gift card {code} already up to date")
