@@ -257,7 +257,7 @@ def recalculate_discounted_price_for_products_task():
     listings = (
         ProductChannelListing.objects.using(settings.DATABASE_CONNECTION_REPLICA_NAME)
         .filter(discounted_price_dirty=True)
-        .order_by("id")[:DISCOUNTED_PRODUCT_BATCH]
+        .order_by("product__id")[:DISCOUNTED_PRODUCT_BATCH]
     )
     listing_details = listings.values_list(
         "id",
