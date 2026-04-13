@@ -238,6 +238,9 @@ class Product(SeoModel, ModelWithMetadata, ModelWithExternalReference):
             models.Index(
                 fields=["category_id", "slug"],
             ),
+            models.Index(
+                fields=["rating", "name", "slug", "id"],
+            ),
         ]
         indexes.extend(ModelWithMetadata.Meta.indexes)
 
