@@ -167,9 +167,11 @@ def get_product_discount_on_promotion(
 
 
 def is_discounted_line_by_catalogue_promotion(
-    variant_channel_listing: "ProductVariantChannelListing",
+    variant_channel_listing: "ProductVariantChannelListing | None",
 ) -> bool:
     """Return True when the price is discounted by catalogue promotion."""
+    if not variant_channel_listing:
+        return False
     price_amount = variant_channel_listing.price_amount
     discounted_price_amount = variant_channel_listing.discounted_price_amount
 
