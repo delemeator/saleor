@@ -38,7 +38,7 @@ PRODUCTS_BATCH_SIZE = 300
 
 VARIANTS_UPDATE_BATCH = 500
 # Results in update time ~0.2s
-DISCOUNTED_PRODUCT_BATCH = 2000
+DISCOUNTED_PRODUCT_BATCH = 100
 # Results in update time ~2s when 600 channels exist
 PROMOTION_RULE_BATCH_SIZE = 50
 
@@ -283,7 +283,7 @@ def recalculate_discounted_price_for_products_task():
             ProductChannelListing.objects.filter(id__in=channel_listings_ids).update(
                 discounted_price_dirty=False
             )
-        recalculate_discounted_price_for_products_task.delay()
+        # recalculate_discounted_price_for_products_task.delay()
 
 
 @app.task
