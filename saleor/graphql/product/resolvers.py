@@ -22,7 +22,11 @@ from ..attribute.dataloaders.attributes import (
     AttributesBySlugLoader,
     AttributeValueByIdLoader,
 )
-from ..attribute.types import ProductAttributeChoices, ProductAttributeChoiceStats
+from ..attribute.types import (
+    ProductAttributeChoices,
+    ProductAttributeChoiceStats,
+    AttributeInputType,
+)
 from ..attribute.utils.shared import AssignedAttributeData
 from ..channel.dataloaders.by_self import ChannelBySlugLoader
 from ..core import ResolveInfo
@@ -452,7 +456,18 @@ def resolve_product_attribute_choices(
     values = AttributeValueByIdLoader(info.context).batch_load(all_value_ids)
     attributes = AttributesBySlugLoader(info.context).batch_load(attribute_slugs)
 
-    values_dict = {value.id: value for value in values if value}
+    value_id_to_key = {
+        value.id: value.reference_page_id
+        or value.reference_product_id
+        or value.reference_collection_id
+        or value.reference_category_id
+        or value.numeric
+        or value.id
+        for value in values
+        if value
+    }
+
+    values_dict = {value_id_to_key[value.id]: value for value in values if value}
     attributes_dict = {
         attribute.slug: attribute for attribute in attributes if attribute
     }
@@ -460,17 +475,23 @@ def resolve_product_attribute_choices(
     # Group by value_id
     value_to_products = defaultdict(set)
     for row in product_rows:
-        value_to_products[row["value_id"]].add(row["product_id"])
+        value_to_products[value_id_to_key[row["value_id"]]].add(row["product_id"])
     for row in variant_rows:
-        value_to_products[row["value_id"]].add(row["assignment__variant__product_id"])
+        value_to_products[value_id_to_key[row["value_id"]]].add(
+            row["assignment__variant__product_id"]
+        )
 
     attribute_slug_to_values = defaultdict(set)
     for row in product_rows:
         if row["product_id"] in product_ids:
-            attribute_slug_to_values[row["value__attribute__slug"]].add(row["value_id"])
+            attribute_slug_to_values[row["value__attribute__slug"]].add(
+                value_id_to_key[row["value_id"]]
+            )
     for row in variant_rows:
         if row["assignment__variant__product_id"] in product_ids:
-            attribute_slug_to_values[row["value__attribute__slug"]].add(row["value_id"])
+            attribute_slug_to_values[row["value__attribute__slug"]].add(
+                value_id_to_key[row["value_id"]]
+            )
 
     output = []
     for slug in attribute_slugs:
@@ -483,11 +504,11 @@ def resolve_product_attribute_choices(
                 attribute=ChannelContext(attribute, channel),
                 choices=[
                     ProductAttributeChoiceStats(
-                        product_count=len(value_to_products[value_id]),
-                        value=ChannelContext(values_dict[value_id], channel),
+                        product_count=len(value_to_products[value_key]),
+                        value=ChannelContext(values_dict[value_key], channel),
                     )
-                    for value_id in attribute_slug_to_values.get(slug, [])
-                    if value_id in values_dict
+                    for value_key in attribute_slug_to_values.get(slug, [])
+                    if value_key in values_dict
                 ],
             )
         )
