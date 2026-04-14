@@ -325,18 +325,52 @@ def deprecated_filter_attributes(qs, value):
     return qs
 
 
+# def _get_assigned_product_attribute_for_attribute_value(
+#     attribute_values: QuerySet[AttributeValue],
+#     db_connection_name: str,
+# ):
+#     return Q(
+#         Exists(
+#             AssignedProductAttributeValue.objects.using(db_connection_name).filter(
+#                 Exists(attribute_values.filter(id=OuterRef("value_id"))),
+#                 product_id=OuterRef("id"),
+#             )
+#         )
+#     )
+
+
 def _get_assigned_product_attribute_for_attribute_value(
     attribute_values: QuerySet[AttributeValue],
     db_connection_name: str,
 ):
-    return Q(
+    product_attribute_filter = Q(
         Exists(
             AssignedProductAttributeValue.objects.using(db_connection_name).filter(
                 Exists(attribute_values.filter(id=OuterRef("value_id"))),
-                product_id=OuterRef("id"),
+                product_id=OuterRef("pk"),
             )
         )
     )
+
+    assigned_variant_attribute_values = AssignedVariantAttributeValue.objects.using(
+        db_connection_name
+    ).filter(Exists(attribute_values.filter(id=OuterRef("value_id"))))
+
+    assigned_variant_attributes = AssignedVariantAttribute.objects.using(
+        db_connection_name
+    ).filter(
+        Exists(assigned_variant_attribute_values.filter(assignment_id=OuterRef("pk")))
+    )
+
+    product_variants = ProductVariant.objects.using(db_connection_name).filter(
+        Exists(assigned_variant_attributes.filter(variant_id=OuterRef("pk")))
+    )
+
+    variant_attribute_filter = Q(
+        Exists(product_variants.filter(product_id=OuterRef("pk")))
+    )
+
+    return product_attribute_filter | variant_attribute_filter
 
 
 def filter_by_slug_or_name(
