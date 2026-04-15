@@ -738,6 +738,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "saleor.checkout.tasks.trigger_automatic_checkout_completion_task",
         "schedule": initiated_checkout_automatic_completion_schedule,
     },
+    "reference-attribute-value-translations": {
+        "task": "saleor.attribute.tasks.generate_reference_attribute_value_translations",
+        "schedule": datetime.timedelta(hours=1),
+    },
 }
 
 # The maximum wait time between each is_due() call on schedulers
