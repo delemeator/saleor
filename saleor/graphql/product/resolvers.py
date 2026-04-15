@@ -457,12 +457,15 @@ def resolve_product_attribute_choices(
     attributes = AttributesBySlugLoader(info.context).batch_load(attribute_slugs)
 
     value_id_to_key = {
-        value.id: value.reference_page_id
-        or value.reference_product_id
-        or value.reference_collection_id
-        or value.reference_category_id
-        or value.numeric
-        or value.id
+        value.id: (
+            value.attribute_id,
+            value.reference_page_id
+            or value.reference_product_id
+            or value.reference_collection_id
+            or value.reference_category_id
+            or value.numeric
+            or value.id,
+        )
         for value in values
         if value
     }
