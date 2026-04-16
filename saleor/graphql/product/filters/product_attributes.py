@@ -4,7 +4,7 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Literal, TypedDict
 
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet, Subquery
 from graphql import GraphQLError
 
 from ....attribute import AttributeInputType
@@ -343,34 +343,21 @@ def _get_assigned_product_attribute_for_attribute_value(
     attribute_values: QuerySet[AttributeValue],
     db_connection_name: str,
 ):
-    product_attribute_filter = Q(
-        Exists(
-            AssignedProductAttributeValue.objects.using(db_connection_name).filter(
-                Exists(attribute_values.filter(id=OuterRef("value_id"))),
-                product_id=OuterRef("pk"),
-            )
-        )
+    product_ids_from_product_attrs = (
+        AssignedProductAttributeValue.objects.using(db_connection_name)
+        .filter(value__in=attribute_values)
+        .values("product_id")
     )
 
-    assigned_variant_attribute_values = AssignedVariantAttributeValue.objects.using(
-        db_connection_name
-    ).filter(Exists(attribute_values.filter(id=OuterRef("value_id"))))
-
-    assigned_variant_attributes = AssignedVariantAttribute.objects.using(
-        db_connection_name
-    ).filter(
-        Exists(assigned_variant_attribute_values.filter(assignment_id=OuterRef("pk")))
+    product_ids_from_variant_attrs = (
+        AssignedVariantAttributeValue.objects.using(db_connection_name)
+        .filter(value__in=attribute_values)
+        .values("assignment__variant__product_id")
     )
 
-    product_variants = ProductVariant.objects.using(db_connection_name).filter(
-        Exists(assigned_variant_attributes.filter(variant_id=OuterRef("pk")))
+    return Q(pk__in=Subquery(product_ids_from_product_attrs)) | Q(
+        pk__in=Subquery(product_ids_from_variant_attrs)
     )
-
-    variant_attribute_filter = Q(
-        Exists(product_variants.filter(product_id=OuterRef("pk")))
-    )
-
-    return product_attribute_filter | variant_attribute_filter
 
 
 def filter_by_slug_or_name(
