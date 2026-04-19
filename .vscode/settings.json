@@ -8,7 +8,8 @@
         "preorder",
         "preorders",
         "undiscounted",
-        "saleor"
+        "saleor",
+        "epremia",
     ],
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
