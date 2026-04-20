@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from collections import defaultdict
 from datetime import date, datetime, timezone
@@ -117,16 +118,6 @@ class Command(BaseCommand):
             "m_url",
             type=str,
             help="The unique URL of the m voucher to import",
-        )
-
-        parser.add_argument(
-            "m_username",
-            type=str,
-        )
-
-        parser.add_argument(
-            "m_password",
-            type=str,
         )
 
         parser.add_argument("--update-existing", action="store_true")
@@ -372,10 +363,10 @@ class Command(BaseCommand):
         tag, _ = GiftCardTag.objects.get_or_create(name=tag_name)
         gift_card.tags.add(tag)
 
-    def handle(self, m_url, m_username, m_password, update_existing=False, **options):
+    def handle(self, m_url, update_existing=False, **options):
         today = date.today()
 
-        m = Magento(m_url, m_username, m_password)
+        m = Magento(m_url, os.environ.get("MAGENTO_USERNAME", ""), os.environ.get("MAGENTO_PASSWORD", ""))
 
         websites = m.request("GET", "/rest/V1/store/storeConfigs").json()
         store_currencies = {
