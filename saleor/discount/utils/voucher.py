@@ -217,6 +217,19 @@ def attach_voucher_to_line_info(
             line_info.voucher_code = voucher_info.voucher_code
 
 
+def _line_matches_voucher_category(
+    line_category,
+    voucher_category_pks: list[int],
+) -> bool:
+    if not line_category or not voucher_category_pks:
+        return False
+
+    category_and_ancestors = line_category.get_ancestors(include_self=True).values_list(
+        "pk", flat=True
+    )
+    return any(pk in voucher_category_pks for pk in category_and_ancestors)
+
+
 def get_discounted_lines(
     lines: Iterable["LineInfo"], voucher_info: "VoucherInfo"
 ) -> Iterable["LineInfo"]:
@@ -238,13 +251,15 @@ def get_discounted_lines(
             line_collections = {
                 collection.pk for collection in line_info.collections if collection
             }
+            category_matches = _line_matches_voucher_category(
+                line_category, voucher_info.category_pks
+            )
             if (
                 line_info.variant
                 and (
                     line_variant.pk in voucher_info.variant_pks
                     or line_product.pk in voucher_info.product_pks
-                    or line_category
-                    and line_category.pk in voucher_info.category_pks
+                    or category_matches
                     or line_collections.intersection(voucher_info.collection_pks)
                 )
                 and (
