@@ -9025,6 +9025,9 @@ type ProductVariantChannelListing implements Node @doc(category: "Products") {
 
   """Preorder variant data."""
   preorderThreshold: PreorderThreshold
+
+  """The promotion rule that was applied to the variant."""
+  appliedRule: PromotionRulePublic
 }
 
 """Represents preorder variant data for channel."""
@@ -9034,61 +9037,6 @@ type PreorderThreshold @doc(category: "Products") {
 
   """Number of sold product variant in this channel."""
   soldUnits: Int!
-}
-
-"""Represents availability of a variant in the storefront."""
-type VariantPricingInfo @doc(category: "Products") {
-  """Whether it is in sale or not."""
-  onSale: Boolean
-
-  """The discount amount if in sale (null otherwise)."""
-  discount: TaxedMoney
-
-  """
-  The discount amount compared to prior price. Null if product is not on sale or prior price was not provided in VariantChannelListing
-  
-  Added in Saleor 3.21.
-  """
-  discountPrior: TaxedMoney
-
-  """The discount amount in the local currency."""
-  discountLocalCurrency: TaxedMoney @deprecated(reason: "Always returns `null`.")
-
-  """The price, with any discount subtracted."""
-  price: TaxedMoney
-
-  """The price without any discount."""
-  priceUndiscounted: TaxedMoney
-
-  """
-  The price prior to discount.
-  
-  Added in Saleor 3.21.
-  """
-  pricePrior: TaxedMoney
-
-  """The promotion rule that was applied to the variant."""
-  appliedRule: PromotionRulePublic
-
-  """The discounted price in the local currency."""
-  priceLocalCurrency: TaxedMoney @deprecated(reason: "Always returns `null`.")
-}
-
-"""
-Represents a monetary value with taxes. In cases where taxes were not applied, net and gross values will be equal.
-"""
-type TaxedMoney {
-  """Currency code."""
-  currency: String!
-
-  """Amount of money including taxes."""
-  gross: Money!
-
-  """Amount of money without taxes."""
-  net: Money!
-
-  """Amount of taxes."""
-  tax: Money!
 }
 
 """Represents publicly available information about the promotion rule."""
@@ -9209,6 +9157,61 @@ type PromotionRewardStats {
 
   """The maximum percentage reward defined in this promotion's rules."""
   percentageMax: Float
+}
+
+"""Represents availability of a variant in the storefront."""
+type VariantPricingInfo @doc(category: "Products") {
+  """Whether it is in sale or not."""
+  onSale: Boolean
+
+  """The discount amount if in sale (null otherwise)."""
+  discount: TaxedMoney
+
+  """
+  The discount amount compared to prior price. Null if product is not on sale or prior price was not provided in VariantChannelListing
+  
+  Added in Saleor 3.21.
+  """
+  discountPrior: TaxedMoney
+
+  """The discount amount in the local currency."""
+  discountLocalCurrency: TaxedMoney @deprecated(reason: "Always returns `null`.")
+
+  """The price, with any discount subtracted."""
+  price: TaxedMoney
+
+  """The price without any discount."""
+  priceUndiscounted: TaxedMoney
+
+  """
+  The price prior to discount.
+  
+  Added in Saleor 3.21.
+  """
+  pricePrior: TaxedMoney
+
+  """The promotion rule that was applied to the variant."""
+  appliedRule: PromotionRulePublic
+
+  """The discounted price in the local currency."""
+  priceLocalCurrency: TaxedMoney @deprecated(reason: "Always returns `null`.")
+}
+
+"""
+Represents a monetary value with taxes. In cases where taxes were not applied, net and gross values will be equal.
+"""
+type TaxedMoney {
+  """Currency code."""
+  currency: String!
+
+  """Amount of money including taxes."""
+  gross: Money!
+
+  """Amount of money without taxes."""
+  net: Money!
+
+  """Amount of taxes."""
+  tax: Money!
 }
 
 input AddressInput {
