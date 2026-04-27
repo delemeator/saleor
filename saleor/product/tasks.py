@@ -283,7 +283,8 @@ def recalculate_discounted_price_for_products_task():
             ProductChannelListing.objects.filter(id__in=channel_listings_ids).update(
                 discounted_price_dirty=False
             )
-        # recalculate_discounted_price_for_products_task.delay()
+        if len(changed_prices) == 0:
+            recalculate_discounted_price_for_products_task.delay()
 
 
 @app.task

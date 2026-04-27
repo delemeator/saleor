@@ -127,7 +127,6 @@ def _update_variant_channel_listings(changed_variants_listings_to_update):
             if listing.applied_rule_id
         }
 
-        # Lock PromotionRule and ProductVariantChannelListing before bulk_update
         if rule_ids:
             rules = (
                 PromotionRule.objects.filter(id__in=rule_ids)

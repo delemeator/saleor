@@ -34,6 +34,12 @@ class Command(BaseCommand):
             help="Currency for created gift cards (default: PLN)",
         )
         parser.add_argument(
+            "--country",
+            type=str,
+            default="PL",
+            help="Country code for created gift cards (default: PL)",
+        )
+        parser.add_argument(
             "--expiry-date",
             type=str,
             required=True,
@@ -93,7 +99,7 @@ class Command(BaseCommand):
             or private_metadata.get("role") == self.ROLE
         )
 
-    def load_csv_rows(self, csv_file: str):
+    def load_csv_rows(self, csv_file: str, requested_country: str):
         parsed_rows = []
         skipped = 0
 
@@ -106,19 +112,23 @@ class Command(BaseCommand):
                         skipped += 1
                         continue
 
-                    if len(row) < 2:
+                    if len(row) < 3:
                         raise CommandError(
-                            f"Row {row_num}: expected at least 2 columns: email,balance"
+                            f"Row {row_num}: expected at least 3 columns: email,balance,country"
                         )
 
                     email = self.normalize_email(row[0])
                     raw_balance = row[1]
+                    country = row[2].strip().upper()
 
                     if not email:
                         self.stdout.write(
                             self.style.WARNING(f"Row {row_num}: empty email, skipping")
                         )
                         skipped += 1
+                        continue
+
+                    if country != requested_country:
                         continue
 
                     try:
@@ -131,6 +141,7 @@ class Command(BaseCommand):
                             "row_num": row_num,
                             "email": email,
                             "balance": balance,
+                            "country": country,
                         }
                     )
         except FileNotFoundError as exc:
@@ -143,9 +154,9 @@ class Command(BaseCommand):
         users = User.objects.filter(email__in=emails).only("id", "email")
         return {user.email.lower(): user for user in users}
 
-    def load_existing_epremia_cards(self):
+    def load_existing_epremia_cards(self, currency):
         qs = (
-            GiftCard.objects.filter(tags__name=self.TAG_NAME)
+            GiftCard.objects.filter(tags__name=self.TAG_NAME, currency=currency)
             .distinct()
             .select_related("used_by")
         )
@@ -205,10 +216,10 @@ class Command(BaseCommand):
             )
 
     @transaction.atomic
-    def handle(self, csv_file, currency, expiry_date, dry_run=False, **options):
+    def handle(self, csv_file, currency, country, expiry_date, dry_run=False, **options):
         expiry_date = self.parse_expiry_date(expiry_date)
 
-        parsed_rows, skipped = self.load_csv_rows(csv_file)
+        parsed_rows, skipped = self.load_csv_rows(csv_file, country)
         if not parsed_rows:
             self.stdout.write(
                 self.style.WARNING(f"No valid rows found. Skipped: {skipped}")
@@ -226,7 +237,7 @@ class Command(BaseCommand):
 
         emails = list(input_by_email.keys())
         users_by_email = self.load_users_by_email(emails)
-        cards_by_user_id, cards_by_email = self.load_existing_epremia_cards()
+        cards_by_user_id, cards_by_email = self.load_existing_epremia_cards(currency)
 
         tag, _ = GiftCardTag.objects.get_or_create(name=self.TAG_NAME)
 

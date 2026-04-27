@@ -27,6 +27,8 @@ from ...core.fields import PermissionsField
 from ...core.scalars import Date, DateTime
 from ...core.tracing import traced_resolver
 from ...core.types import BaseObjectType, ModelObjectType
+from ...discount.dataloaders import PromotionRuleByIdLoader
+from ...discount.types.promotions import PromotionRulePublic
 from ...tax.dataloaders import (
     TaxClassCountryRateByTaxClassIDLoader,
     TaxClassDefaultRateByCountryLoader,
@@ -356,6 +358,10 @@ class ProductVariantChannelListing(
         required=False,
         description="Preorder variant data.",
     )
+    applied_rule = graphene.Field(
+        PromotionRulePublic,
+        description="The promotion rule that was applied to the variant.",
+    )
 
     class Meta:
         description = "Represents product variant channel listing."
@@ -378,6 +384,12 @@ class ProductVariantChannelListing(
             quantity=root.preorder_quantity_threshold,
             sold_units=getattr(root, "preorder_quantity_allocated", 0),
         )
+
+    @staticmethod
+    def resolve_applied_rule(root: models.ProductVariantChannelListing, info):
+        if not root.applied_rule_id:
+            return None
+        return PromotionRuleByIdLoader(info.context).load(root.applied_rule_id)
 
 
 class CollectionChannelListing(ModelObjectType[models.CollectionChannelListing]):

@@ -25,7 +25,6 @@ from ..attribute.dataloaders.attributes import (
 from ..attribute.types import (
     ProductAttributeChoices,
     ProductAttributeChoiceStats,
-    AttributeInputType,
 )
 from ..attribute.utils.shared import AssignedAttributeData
 from ..channel.dataloaders.by_self import ChannelBySlugLoader

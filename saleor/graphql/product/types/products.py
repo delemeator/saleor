@@ -98,6 +98,7 @@ from ...core.utils import from_global_id_or_error
 from ...core.validators import (
     validate_one_of_args_is_in_query,
 )
+from ...discount.dataloaders import PromotionRuleByIdLoader
 from ...discount.types.promotions import PromotionRulePublic
 from ...meta.types import ObjectWithMetadata
 from ...order.dataloaders import (
