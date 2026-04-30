@@ -60,6 +60,8 @@ def update_discounted_prices_for_promotion(
     changed_variant_listing_promotion_rule_to_create = []
     changed_variant_listing_promotion_rule_to_update = []
 
+    changed_variant_listing_cleanup_rules: dict[int, UUID | None] = {}
+
     changed_variant_prices: list[VariantDiscountedPriceChange] = []
 
     product_channel_listings = (
@@ -103,6 +105,8 @@ def update_discounted_prices_for_promotion(
             variant_listing_promotion_rule_to_update
         )
 
+        changed_variant_listing_cleanup_rules.update(variant_listing_cleanup_rules)
+
         changed_variant_prices.extend(variant_price_changes)
 
         # check if the product discounted_price has changed
@@ -117,7 +121,7 @@ def update_discounted_prices_for_promotion(
         changed_variants_listings_to_update,
         changed_variant_listing_promotion_rule_to_create,
         changed_variant_listing_promotion_rule_to_update,
-        variant_listing_cleanup_rules,
+        changed_variant_listing_cleanup_rules,
     )
 
     return changed_variant_prices
