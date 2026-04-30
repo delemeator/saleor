@@ -68,7 +68,7 @@ def update_discounted_prices_for_promotion(
         .prefetch_related("channel")
     )
     if only_dirty_products:
-        product_channel_listings.filter(discounted_price_dirty=True)
+        product_channel_listings = product_channel_listings.filter(discounted_price_dirty=True)
 
     for product_channel_listing in product_channel_listings:
         product_id = product_channel_listing.product_id
@@ -84,6 +84,7 @@ def update_discounted_prices_for_promotion(
             variant_listing_promotion_rule_to_create,
             variant_listing_promotion_rule_to_update,
             variant_price_changes,
+            variant_listing_ids_to_cleanup,
         ) = _get_discounted_variants_prices_for_promotions(
             variant_listings,
             rules_info_per_variant,
@@ -159,6 +160,7 @@ def _update_or_create_listings(
     changed_variant_listing_promotion_rule_to_update: list[
         VariantChannelListingPromotionRule
     ],
+    variant_listing_cleanup_rules: dict[int, UUID | None]
 ):
     if changed_products_listings_to_update:
         ProductChannelListing.objects.bulk_update(
@@ -175,6 +177,19 @@ def _update_or_create_listings(
         _create_variant_listing_promotion_rule(
             changed_variant_listing_promotion_rule_to_create
         )
+
+    for variant_listing_id in sorted(variant_listing_cleanup_rules):
+        rule_id = variant_listing_cleanup_rules[variant_listing_id]
+
+        qs = VariantChannelListingPromotionRule.objects.filter(
+            variant_channel_listing_id=variant_listing_id
+        )
+
+        if rule_id:
+            qs = qs.exclude(promotion_rule_id=rule_id)
+
+        qs.delete()
+        
     if changed_variant_listing_promotion_rule_to_update:
         VariantChannelListingPromotionRule.objects.bulk_update(
             sorted(
@@ -305,6 +320,7 @@ def _get_discounted_variants_prices_for_promotions(
     list[VariantChannelListingPromotionRule],
     list[VariantChannelListingPromotionRule],
     list[VariantDiscountedPriceChange],
+    set[int],
 ]:
     variants_listings_to_update: list[ProductVariantChannelListing] = []
     discounted_variants_price: list[Money] = []
@@ -315,6 +331,7 @@ def _get_discounted_variants_prices_for_promotions(
         VariantChannelListingPromotionRule
     ] = []
     variant_price_changes: list[VariantDiscountedPriceChange] = []
+    variant_listing_cleanup_rules: dict[int, UUID | None] = {}
 
     for variant_listing in variant_listings:
         applied_discount = calculate_discounted_price_for_promotions(
@@ -373,11 +390,7 @@ def _get_discounted_variants_prices_for_promotions(
             variant_listing.applied_rule = applied_rule
             variants_listings_to_update.append(variant_listing)
 
-            # delete variant listing - promotion rules relations that are not valid
-            # anymore
-            VariantChannelListingPromotionRule.objects.filter(
-                variant_channel_listing_id=variant_listing.id
-            ).exclude(promotion_rule_id=rule_id).delete()
+            variant_listing_cleanup_rules[variant_listing.id] = rule_id
 
         discounted_variants_price.append(discounted_variant_price)
 
@@ -387,6 +400,7 @@ def _get_discounted_variants_prices_for_promotions(
         variant_listing_promotion_rule_to_create,
         variant_listing_promotion_rule_to_update,
         variant_price_changes,
+        variant_listing_ids_to_cleanup,
     )
 
 

@@ -10,6 +10,8 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
 
+from saleor.product.utils.lock import pg_try_advisory_lock
+
 from ..attribute.models import Attribute
 from ..celeryconf import app
 from ..core.db.connection import allow_writer
@@ -254,36 +256,40 @@ def _send_variant_price_updated_webhooks(
 @allow_writer()
 def recalculate_discounted_price_for_products_task():
     """Recalculate discounted price for products."""
-    listings = (
-        ProductChannelListing.objects.using(settings.DATABASE_CONNECTION_REPLICA_NAME)
-        .filter(discounted_price_dirty=True)
-        .order_by("product__id")[:DISCOUNTED_PRODUCT_BATCH]
-    )
-    listing_details = listings.values_list(
-        "id",
-        "product_id",
-    )
-    products_ids = {product_id for _, product_id in listing_details}
-    listing_ids = {listing_id for listing_id, _ in listing_details}
-    if products_ids:
-        products = Product.objects.using(
-            settings.DATABASE_CONNECTION_REPLICA_NAME
-        ).filter(id__in=products_ids)
-        changed_prices = update_discounted_prices_for_promotion(
-            products, only_dirty_products=True
+    with pg_try_advisory_lock(92133701) as acquired:
+        if not acquired:
+            return
+        listings = (
+            ProductChannelListing.objects.using(
+                settings.DATABASE_CONNECTION_REPLICA_NAME
+            )
+            .filter(discounted_price_dirty=True)
+            .order_by("product__id")[:DISCOUNTED_PRODUCT_BATCH]
         )
-        _send_variant_price_updated_webhooks(changed_prices)
-        with transaction.atomic():
-            channel_listings_ids = list(
-                ProductChannelListing.objects.select_for_update(of=("self",))
-                .filter(id__in=listing_ids, discounted_price_dirty=True)
-                .order_by("pk")
-                .values_list("id", flat=True)
+        listing_details = listings.values_list(
+            "id",
+            "product_id",
+        )
+        products_ids = {product_id for _, product_id in listing_details}
+        listing_ids = {listing_id for listing_id, _ in listing_details}
+        if products_ids:
+            products = Product.objects.using(
+                settings.DATABASE_CONNECTION_REPLICA_NAME
+            ).filter(id__in=products_ids)
+            changed_prices = update_discounted_prices_for_promotion(
+                products, only_dirty_products=True
             )
-            ProductChannelListing.objects.filter(id__in=channel_listings_ids).update(
-                discounted_price_dirty=False
-            )
-        if len(changed_prices) == 0:
+            _send_variant_price_updated_webhooks(changed_prices)
+            with transaction.atomic():
+                channel_listings_ids = list(
+                    ProductChannelListing.objects.select_for_update(of=("self",))
+                    .filter(id__in=listing_ids, discounted_price_dirty=True)
+                    .order_by("pk")
+                    .values_list("id", flat=True)
+                )
+                ProductChannelListing.objects.filter(
+                    id__in=channel_listings_ids
+                ).update(discounted_price_dirty=False)
             recalculate_discounted_price_for_products_task.delay()
 
 
