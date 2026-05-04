@@ -18945,6 +18945,16 @@ type Mutation {
   ): VariantMediaUnassign @doc(category: "Products")
 
   """
+  Changes the product type of an existing product. 
+  
+  Requires one of the following permissions: MANAGE_PRODUCTS.
+  """
+  productTypeChange(
+    """Fields required to change product type."""
+    input: ProductTypeChangeInput!
+  ): ProductTypeChange
+
+  """
   Captures the authorized payment amount. 
   
   Requires one of the following permissions: MANAGE_ORDERS.
@@ -26041,6 +26051,26 @@ type VariantMediaUnassign @doc(category: "Products") {
   media: ProductMedia
   productErrors: [ProductError!]! @deprecated(reason: "Use `errors` field instead.")
   errors: [ProductError!]!
+}
+
+"""
+Changes the product type of an existing product. 
+
+Requires one of the following permissions: MANAGE_PRODUCTS.
+"""
+type ProductTypeChange {
+  """The updated product."""
+  product: Product
+  productErrors: [ProductError!]! @deprecated(reason: "Use `errors` field instead.")
+  errors: [ProductError!]!
+}
+
+input ProductTypeChangeInput {
+  """ID of the product to update."""
+  productId: ID!
+
+  """Slug of the new product type."""
+  productTypeSlug: String!
 }
 
 """
