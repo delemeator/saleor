@@ -2,6 +2,10 @@ import graphene
 from django.db.models import Exists, OuterRef
 from promise import Promise
 
+from saleor.graphql.product.mutations.product.product_type_change import (
+    ProductTypeChange,
+)
+
 from ...permission.enums import ProductPermissions
 from ...permission.utils import has_one_of_permissions
 from ...product import models
@@ -80,6 +84,7 @@ from .mutations import (
     ProductMediaDelete,
     ProductMediaReorder,
     ProductMediaUpdate,
+    ProductTypeChange,
     ProductTypeCreate,
     ProductTypeDelete,
     ProductTypeUpdate,
@@ -794,3 +799,5 @@ class ProductMutations(graphene.ObjectType):
 
     variant_media_assign = VariantMediaAssign.Field()
     variant_media_unassign = VariantMediaUnassign.Field()
+
+    product_type_change = ProductTypeChange.Field()

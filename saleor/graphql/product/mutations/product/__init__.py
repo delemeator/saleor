@@ -4,6 +4,7 @@ from .product_media_create import ProductMediaCreate
 from .product_media_delete import ProductMediaDelete
 from .product_media_reorder import ProductMediaReorder
 from .product_media_update import ProductMediaUpdate
+from .product_type_change import ProductTypeChange
 from .product_update import ProductUpdate
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "ProductMediaReorder",
     "ProductMediaUpdate",
     "ProductUpdate",
+    "ProductTypeChange",
 ]

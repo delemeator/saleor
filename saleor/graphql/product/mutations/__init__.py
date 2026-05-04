@@ -14,6 +14,7 @@ from .product import (
     ProductMediaDelete,
     ProductMediaReorder,
     ProductMediaUpdate,
+    ProductTypeChange,
     ProductUpdate,
 )
 from .product_type import ProductTypeCreate, ProductTypeDelete, ProductTypeUpdate
@@ -56,4 +57,5 @@ __all__ = [
     "ProductVariantUpdate",
     "VariantMediaAssign",
     "VariantMediaUnassign",
+    "ProductTypeChange",
 ]
