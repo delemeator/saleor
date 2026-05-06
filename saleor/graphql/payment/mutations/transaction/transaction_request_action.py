@@ -107,7 +107,7 @@ class TransactionRequestAction(BaseMutation):
         elif action == TransactionAction.CHARGE:
             transaction = action_kwargs["transaction"]
             action_value = action_value or transaction.authorized_value
-            action_value = min(action_value, transaction.authorized_value)
+            # action_value = min(action_value, transaction.authorized_value)
             request_event = cls.create_transaction_event_requested(
                 transaction, action_value, TransactionAction.CHARGE, user=user, app=app
             )
