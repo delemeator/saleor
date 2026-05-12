@@ -271,7 +271,12 @@ def get_discounted_lines(
     else:
         # If there's no discounted products, collections or categories,
         # it means that all products are discounted
-        discounted_lines.extend(lines)
+        discounted_lines.extend(
+            line_info
+            for line_info in lines
+            if not voucher_info.voucher.exclude_discounted_products
+            or not line_info.discounts
+        )
     return discounted_lines
 
 
