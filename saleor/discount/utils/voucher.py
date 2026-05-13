@@ -53,6 +53,10 @@ def is_order_level_voucher(voucher: Voucher | None):
         voucher
         and voucher.type == VoucherType.ENTIRE_ORDER
         and not voucher.apply_once_per_order
+        and (
+            not voucher.exclude_discounted_products
+            or voucher.discount_value_type != DiscountValueType.PERCENTAGE
+        )
     )
 
 
@@ -62,7 +66,13 @@ def is_shipping_voucher(voucher: Voucher | None):
 
 def is_line_level_voucher(voucher: Voucher | None):
     return voucher and (
-        voucher.type == VoucherType.SPECIFIC_PRODUCT or voucher.apply_once_per_order
+        voucher.type == VoucherType.SPECIFIC_PRODUCT
+        or voucher.apply_once_per_order
+        or (
+            voucher.type == VoucherType.ENTIRE_ORDER
+            and voucher.exclude_discounted_products
+            and voucher.discount_value_type == DiscountValueType.PERCENTAGE
+        )
     )
 
 
@@ -203,7 +213,10 @@ def attach_voucher_to_line_info(
     voucher = voucher_info.voucher
     discounted_lines_by_voucher: list[LineInfo] = []
     lines_included_in_discount = lines_info
-    if voucher.type == VoucherType.SPECIFIC_PRODUCT:
+    if voucher.type == VoucherType.SPECIFIC_PRODUCT or (
+        voucher.exclude_discounted_products
+        and voucher.discount_value_type == DiscountValueType.PERCENTAGE
+    ):
         discounted_lines_by_voucher.extend(
             get_discounted_lines(lines_info, voucher_info)
         )
