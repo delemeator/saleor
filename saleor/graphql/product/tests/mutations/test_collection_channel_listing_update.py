@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import patch
 
 import graphene
 from freezegun import freeze_time
@@ -553,3 +554,31 @@ def test_collection_channel_listing_update_publish_without_publication_date(
         == datetime.datetime.now(tz=datetime.UTC).isoformat()
     )
     assert collection_data["channelListings"][0]["channel"]["slug"] == channel_USD.slug
+
+
+@patch("saleor.plugins.manager.PluginsManager.collection_updated")
+def test_collection_channel_listing_update_fires_collection_updated_webhook(
+    updated_webhook_mock,
+    staff_api_client,
+    published_collection,
+    permission_manage_products,
+    channel_PLN,
+):
+    # given
+    collection_id = graphene.Node.to_global_id("Collection", published_collection.pk)
+    channel_id = graphene.Node.to_global_id("Channel", channel_PLN.id)
+    variables = {
+        "id": collection_id,
+        "input": {"addChannels": [{"channelId": channel_id, "isPublished": True}]},
+    }
+
+    # when
+    response = staff_api_client.post_graphql(
+        COLLECTION_CHANNEL_LISTING_UPDATE_MUTATION,
+        variables=variables,
+        permissions=(permission_manage_products,),
+    )
+    get_graphql_content(response)
+
+    # then
+    updated_webhook_mock.assert_called_once_with(published_collection)

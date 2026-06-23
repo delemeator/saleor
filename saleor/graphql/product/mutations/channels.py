@@ -659,6 +659,13 @@ class CollectionChannelListingUpdate(BaseChannelListingMutation):
             cls.remove_channels(collection, cleaned_input.get("remove_channels", []))
 
     @classmethod
+    def post_save_actions(
+        cls, info: ResolveInfo, collection: "CollectionModel", cleaned_input: dict
+    ):
+        manager = get_plugin_manager_promise(info.context).get()
+        cls.call_event(manager.collection_updated, collection)
+
+    @classmethod
     def perform_mutation(  # type: ignore[override]
         cls, _root, info: ResolveInfo, /, *, id, input
     ):
@@ -676,6 +683,7 @@ class CollectionChannelListingUpdate(BaseChannelListingMutation):
             raise ValidationError(errors)
 
         cls.save(info, collection, cleaned_input)
+        cls.post_save_actions(info, collection, cleaned_input)
         return CollectionChannelListingUpdate(
             collection=ChannelContext(node=collection, channel_slug=None)
         )
