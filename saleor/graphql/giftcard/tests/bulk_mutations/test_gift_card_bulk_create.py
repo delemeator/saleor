@@ -162,6 +162,56 @@ def test_create_never_expiry_gift_cards(
         assert not card_data["events"][0]["balance"]["oldCurrentBalance"]
 
 
+def test_create_gift_cards_with_existing_tag_keeps_other_cards_tagged(
+    staff_api_client,
+    gift_card,
+    permission_manage_gift_card,
+    permission_manage_users,
+    permission_manage_apps,
+):
+    # given
+    existing_tag_name = gift_card.tags.get().name
+    initial_balance = 100
+    currency = "USD"
+    count = 3
+    is_active = True
+    variables = {
+        "input": {
+            "count": count,
+            "balance": {
+                "amount": initial_balance,
+                "currency": currency,
+            },
+            "tags": [existing_tag_name],
+            "isActive": is_active,
+        }
+    }
+
+    # when
+    response = staff_api_client.post_graphql(
+        GIFT_CARD_BULK_CREATE_MUTATION,
+        variables,
+        permissions=[
+            permission_manage_gift_card,
+            permission_manage_users,
+            permission_manage_apps,
+        ],
+    )
+
+    # then
+    content = get_graphql_content(response)
+    errors = content["data"]["giftCardBulkCreate"]["errors"]
+    data = content["data"]["giftCardBulkCreate"]
+
+    assert not errors
+    assert data["count"] == count
+    for card_data in data["giftCards"]:
+        assert {tag["name"] for tag in card_data["tags"]} == {existing_tag_name}
+
+    gift_card.refresh_from_db()
+    assert existing_tag_name in {tag.name for tag in gift_card.tags.all()}
+
+
 @mock.patch(
     "saleor.graphql.giftcard.bulk_mutations."
     "gift_card_bulk_create.get_webhooks_for_event"

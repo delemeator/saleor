@@ -272,7 +272,7 @@ def transaction_request_webhook(permission_manage_payments):
     [
         (Decimal("8.00"), Decimal("8.00")),
         (None, Decimal("10.00")),
-        (Decimal(100), Decimal("10.00")),
+        (Decimal(100), Decimal("100.00")),
     ],
 )
 @patch("saleor.plugins.manager.PluginsManager.is_event_active_for_any_plugin")
@@ -355,7 +355,7 @@ def test_transaction_request_charge_for_order(
     [
         (Decimal("8.00"), Decimal("8.00")),
         (None, Decimal("10.00")),
-        (Decimal(100), Decimal("10.00")),
+        (Decimal(100), Decimal("100.00")),
     ],
 )
 @patch("saleor.plugins.manager.PluginsManager.is_event_active_for_any_plugin")
@@ -438,7 +438,7 @@ def test_transaction_request_charge_for_order_via_token(
     [
         (Decimal("8.00"), Decimal("8.00")),
         (None, Decimal("10.00")),
-        (Decimal(100), Decimal("10.00")),
+        (Decimal(100), Decimal("100.00")),
     ],
 )
 @patch("saleor.plugins.manager.PluginsManager.is_event_active_for_any_plugin")
