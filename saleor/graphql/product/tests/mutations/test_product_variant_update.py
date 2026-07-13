@@ -1377,7 +1377,7 @@ def test_update_variant_with_rich_text_attribute(
             {"id": attr_id, "richText": json.dumps(rich_text)},
         ],
     }
-    rich_text_attribute_value.slug = f"{variant.id}_{rich_text_attribute.id}"
+    rich_text_attribute_value.slug = f"productvariant-{variant.id}_{rich_text_attribute.id}"
     rich_text_attribute_value.save()
     values_count = rich_text_attribute.values.count()
     associate_attribute_values_to_instance(
@@ -1433,7 +1433,7 @@ def test_update_variant_with_plain_text_attribute(
             {"id": attr_id, "plainText": text},
         ],
     }
-    plain_text_attribute_value.slug = f"{variant.id}_{plain_text_attribute.id}"
+    plain_text_attribute_value.slug = f"productvariant-{variant.id}_{plain_text_attribute.id}"
     plain_text_attribute_value.save()
     values_count = plain_text_attribute.values.count()
     associate_attribute_values_to_instance(
@@ -1492,7 +1492,7 @@ def test_update_variant_with_plain_text_attribute_value_required(
             {"id": attr_id, "plainText": text},
         ],
     }
-    plain_text_attribute_value.slug = f"{variant.id}_{plain_text_attribute.id}"
+    plain_text_attribute_value.slug = f"productvariant-{variant.id}_{plain_text_attribute.id}"
     plain_text_attribute_value.save()
 
     plain_text_attribute.value_required = True
@@ -1547,7 +1547,7 @@ def test_update_variant_with_required_plain_text_attribute_no_value(
     attr_id = graphene.Node.to_global_id("Attribute", plain_text_attribute.id)
 
     plain_text_attribute_value = plain_text_attribute.values.first()
-    plain_text_attribute_value.slug = f"{variant.id}_{plain_text_attribute.id}"
+    plain_text_attribute_value.slug = f"productvariant-{variant.id}_{plain_text_attribute.id}"
     plain_text_attribute_value.save()
 
     associate_attribute_values_to_instance(
@@ -1630,7 +1630,7 @@ def test_update_variant_with_date_attribute(
                 "dateTime": None,
                 "date": str(date_value),
                 "name": str(date_value),
-                "slug": f"{variant.id}_{date_attribute.id}",
+                "slug": f"productvariant-{variant.id}_{date_attribute.id}",
             }
         ],
     }
@@ -1700,7 +1700,7 @@ def test_update_variant_with_date_time_attribute(
                 "dateTime": date_time_value.isoformat(),
                 "date": None,
                 "name": str(date_time_value),
-                "slug": f"{variant.id}_{date_time_attribute.id}",
+                "slug": f"productvariant-{variant.id}_{date_time_attribute.id}",
             }
         ],
     }
@@ -1744,7 +1744,7 @@ def test_update_variant_removes_numeric_attribute_value(
             {"id": attr_id, "values": []},
         ],
     }
-    attribute_value.slug = f"{variant.id}_{numeric_attribute.id}"
+    attribute_value.slug = f"productvariant-{variant.id}_{numeric_attribute.id}"
     attribute_value.save()
     values_count = numeric_attribute.values.count()
     associate_attribute_values_to_instance(

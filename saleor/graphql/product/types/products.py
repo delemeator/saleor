@@ -407,6 +407,9 @@ class ProductVariant(ChannelContextType[models.ProductVariant]):
         lambda: ProductMedia,
         description="List of media for the product variant.",
     )
+    thumbnail = ThumbnailField(
+        description="Thumbnail of the product variant." + ADDED_IN_322
+    )
     translation = TranslationField(
         ProductVariantTranslation,
         type_name="product variant",
@@ -838,6 +841,45 @@ class ProductVariant(ChannelContextType[models.ProductVariant]):
     @staticmethod
     def resolve_images(root: ChannelContext[models.ProductVariant], info):
         return ImagesByProductVariantIdLoader(info.context).load(root.node.id)
+
+    @staticmethod
+    def resolve_thumbnail(
+        root: ChannelContext[models.ProductVariant],
+        info,
+        *,
+        size: int = 256,
+        format: str | None = None,
+    ):
+        format = get_thumbnail_format(format)
+        size = get_thumbnail_size(size)
+
+        def return_first_thumbnail(variant_media):
+            if not variant_media:
+                return None
+
+            image = variant_media[0]
+            oembed_data = image.oembed_data
+
+            if oembed_data.get("thumbnail_url"):
+                return Image(alt=oembed_data["title"], url=oembed_data["thumbnail_url"])
+
+            def _resolve_url(thumbnail):
+                url = get_image_or_proxy_url(
+                    thumbnail, image.id, "ProductMedia", size, format
+                )
+                return Image(alt=image.alt, url=build_absolute_uri(url))
+
+            return (
+                ThumbnailByProductMediaIdSizeAndFormatLoader(info.context)
+                .load((image.id, size, format))
+                .then(_resolve_url)
+            )
+
+        return (
+            MediaByProductVariantIdLoader(info.context)
+            .load(root.node.id)
+            .then(return_first_thumbnail)
+        )
 
     @staticmethod
     def resolve_weight(root: ChannelContext[models.ProductVariant], _info):

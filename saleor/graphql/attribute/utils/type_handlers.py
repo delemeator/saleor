@@ -116,7 +116,14 @@ class AttributeTypeHandler(abc.ABC):
         instance: T_INSTANCE,
         value_defaults: dict,
     ):
-        slug = slugify(unidecode(f"{instance.id}_{self.attribute.id}"))
+        # Scope the slug by instance type - products, variants and pages use
+        # independent id sequences, so a bare id would make entities of
+        # different types with equal pks share one value row.
+        slug = slugify(
+            unidecode(
+                f"{instance._meta.model_name}-{instance.id}_{self.attribute.id}"
+            )
+        )
         value = {
             "attribute": self.attribute,
             "slug": slug,
