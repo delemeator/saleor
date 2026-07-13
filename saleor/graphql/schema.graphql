@@ -8936,6 +8936,23 @@ type ProductVariant implements Node & ObjectWithMetadata & ObjectWithAttributes 
   """List of media for the product variant."""
   media: [ProductMedia!]
 
+  """
+  Thumbnail of the product variant.
+  
+  Added in Saleor 3.22.
+  """
+  thumbnail(
+    """
+    Desired longest side the image in pixels. Defaults to 4096. Images are never cropped. Pass 0 to retrieve the original size (not recommended).
+    """
+    size: Int
+
+    """
+    The format of the image. When not provided, format of the original image will be used.
+    """
+    format: ThumbnailFormatEnum = ORIGINAL
+  ): Image
+
   """Returns translated product variant fields for the given language code."""
   translation(
     """A language code to return the translation for product variant."""

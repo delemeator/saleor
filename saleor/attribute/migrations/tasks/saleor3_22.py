@@ -139,17 +139,14 @@ def _split_value_between_entities(value, links):
         assignment.save(update_fields=["value"])
 
 
-@app.task(queue=settings.DATA_MIGRATIONS_TASKS_QUEUE_NAME)
 @allow_writer()
-def fix_instance_scoped_attribute_value_slugs_task(start_pk=0):
-    """Migrate auto-generated value slugs to the type-scoped format.
+def process_instance_scoped_slug_batch(start_pk=0):
+    """Process one batch of old-format instance-scoped value slugs.
 
-    The old "{instance_id}_{attribute_id}" slug format is not unique across
-    products, variants, and pages, so entities of different types with equal
-    pks ended up sharing (and overwriting) one value row. Rewrite slugs to
-    "{model_name}-{instance_id}_{attribute_id}" and give every additionally
-    linked entity its own copy of the shared value.
+    Returns a tuple of (last processed pk or None when there is nothing
+    left, per-batch stats dict).
     """
+    stats = {"renamed": 0, "split_copies": 0, "skipped_orphans": 0, "skipped_other": 0}
     value_ids = list(
         AttributeValue.objects.filter(
             pk__gt=start_pk,
@@ -161,7 +158,7 @@ def fix_instance_scoped_attribute_value_slugs_task(start_pk=0):
     )
 
     if not value_ids:
-        return
+        return None, stats
 
     with transaction.atomic():
         values = (
@@ -172,13 +169,33 @@ def fix_instance_scoped_attribute_value_slugs_task(start_pk=0):
         for value in values:
             if value.slug.split("_")[-1] != str(value.attribute_id):
                 # not an auto-generated instance-scoped slug
+                stats["skipped_other"] += 1
                 continue
             links = _get_assignment_links(value.pk)
             if not links:
+                stats["skipped_orphans"] += 1
                 continue
             _split_value_between_entities(value, links)
+            stats["renamed"] += 1
+            stats["split_copies"] += len(links) - 1
 
-    fix_instance_scoped_attribute_value_slugs_task.delay(value_ids[-1])
+    return value_ids[-1], stats
+
+
+@app.task(queue=settings.DATA_MIGRATIONS_TASKS_QUEUE_NAME)
+@allow_writer()
+def fix_instance_scoped_attribute_value_slugs_task(start_pk=0):
+    """Migrate auto-generated value slugs to the type-scoped format.
+
+    The old "{instance_id}_{attribute_id}" slug format is not unique across
+    products, variants, and pages, so entities of different types with equal
+    pks ended up sharing (and overwriting) one value row. Rewrite slugs to
+    "{model_name}-{instance_id}_{attribute_id}" and give every additionally
+    linked entity its own copy of the shared value.
+    """
+    last_pk, _stats = process_instance_scoped_slug_batch(start_pk)
+    if last_pk is not None:
+        fix_instance_scoped_attribute_value_slugs_task.delay(last_pk)
 
 
 @app.task(queue=settings.DATA_MIGRATIONS_TASKS_QUEUE_NAME)
