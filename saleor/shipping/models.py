@@ -128,7 +128,7 @@ class ShippingMethodQueryset(models.QuerySet["ShippingMethod"]):
             .values_list("price_amount")
         )
         return shipping_methods.annotate(price_amount=Subquery(query)).order_by(
-            "price_amount"
+            "price_amount", "pk"
         )
 
     def exclude_shipping_methods_for_excluded_products(
