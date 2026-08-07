@@ -2802,18 +2802,17 @@ def test_draft_order_create_with_custom_price_and_catalogue_promotion(
     assert data["status"] == OrderStatus.DRAFT.upper()
     assert len(data["lines"]) == 2
 
-    line_1_unit_discount = custom_price * reward_value / 100
     promotion_id = graphene.Node.to_global_id("Promotion", promotion_rule.promotion_id)
     expected_discount_reason = f"Promotion: {promotion_id}"
     line_data_1 = {
         "productVariantId": variant_id,
         "quantity": quantity,
         "unitDiscount": {
-            "amount": float(line_1_unit_discount),
+            "amount": 0.0,
         },
         "unitPrice": {
             "gross": {
-                "amount": float(custom_price - line_1_unit_discount),
+                "amount": float(custom_price),
             },
         },
         "undiscountedUnitPrice": {
@@ -2823,23 +2822,15 @@ def test_draft_order_create_with_custom_price_and_catalogue_promotion(
         },
         "totalPrice": {
             "gross": {
-                "amount": float((custom_price - line_1_unit_discount) * quantity),
+                "amount": float(custom_price * quantity),
             },
         },
-        "unitDiscountReason": expected_discount_reason,
-        "unitDiscountType": RewardValueType.PERCENTAGE.upper(),
-        "unitDiscountValue": reward_value,
+        "unitDiscountReason": None,
+        "unitDiscountType": None,
+        "unitDiscountValue": Decimal(0),
         "isPriceOverridden": True,
         "isGift": False,
-        "discounts": [
-            {
-                "total": {"amount": Decimal(line_1_unit_discount * quantity)},
-                "unit": {"amount": Decimal(line_1_unit_discount)},
-                "reason": expected_discount_reason,
-                "value": reward_value,
-                "valueType": RewardValueType.PERCENTAGE.upper(),
-            }
-        ],
+        "discounts": [],
     }
     assert line_data_1 in data["lines"]
 

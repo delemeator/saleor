@@ -344,8 +344,9 @@ def prepare_order_line_discount_objects_for_catalogue_promotions(lines_info):
             line_info.channel_listing
         )
 
-        # delete all existing discounts if the line is not discounted or it is a gift
-        if not discounted_line or line.is_gift:
+        # delete all existing discounts if the line is not discounted, it is a gift,
+        # or the price has been manually overridden
+        if not discounted_line or line.is_gift or line.is_price_overridden:
             line_discounts_to_remove.extend(discounts_to_update)
             continue
 

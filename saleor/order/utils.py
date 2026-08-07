@@ -271,12 +271,18 @@ def create_order_line(
     product = variant.product
     channel_listing = variant.channel_listings.get(channel=channel)
 
+    # catalogue promotions do not stack on top of a manually overridden price
+    # for draft order lines
+    apply_catalogue_discount = not (is_price_overridden and order.is_draft())
+
     # vouchers are not applied for new lines in unconfirmed/draft orders
     untaxed_unit_price = variant.get_price(
         channel_listing,
         price_override=price_override,
         promotion_rules=(
-            [rule_info.rule for rule_info in rules_info] if rules_info else None
+            [rule_info.rule for rule_info in rules_info]
+            if rules_info and apply_catalogue_discount
+            else None
         ),
     )
     untaxed_undiscounted_price = variant.get_base_price(
@@ -438,11 +444,16 @@ def update_line_base_unit_prices_with_custom_price(
     channel_listing = variant.channel_listings.get(channel=channel)
 
     line.is_price_overridden = True
+    # catalogue promotions do not stack on top of a manually overridden price
+    # for draft order lines
+    apply_catalogue_discount = not order.is_draft()
     line.base_unit_price = variant.get_price(
         channel_listing,
         price_override=price_override,
         promotion_rules=(
-            [rule_info.rule for rule_info in rules_info] if rules_info else None
+            [rule_info.rule for rule_info in rules_info]
+            if rules_info and apply_catalogue_discount
+            else None
         ),
     )
     line.undiscounted_base_unit_price_amount = price_override
@@ -619,7 +630,25 @@ def change_order_line_quantity(
         else:
             line.save(update_fields=fields)
 
-        if catalogue_discount := line.discounts.filter(
+        if line.is_price_overridden and order.is_draft():
+            deleted_count, _ = line.discounts.filter(
+                type=DiscountType.PROMOTION
+            ).delete()
+            if deleted_count:
+                update_unit_discount_data_on_order_line(
+                    line, list(line.discounts.all())
+                )
+                discount_fields = [
+                    "unit_discount_amount",
+                    "unit_discount_reason",
+                    "unit_discount_type",
+                    "unit_discount_value",
+                ]
+                if update_fields:
+                    update_fields.extend(discount_fields)
+                else:
+                    line.save(update_fields=discount_fields)
+        elif catalogue_discount := line.discounts.filter(
             type=DiscountType.PROMOTION
         ).first():
             update_catalogue_promotion_discount_amount_for_order(

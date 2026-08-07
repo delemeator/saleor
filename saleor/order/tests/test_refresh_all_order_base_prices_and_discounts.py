@@ -13,11 +13,15 @@ from ...discount.models import OrderLineDiscount, Promotion, PromotionRule
 from ...discount.utils.voucher import (
     create_or_update_voucher_discount_objects_for_order,
 )
+from ...discount.utils.order import (
+    refresh_order_line_discount_objects_for_catalogue_promotions,
+)
 from ...product.models import Product
 from ...product.utils.variant_prices import update_discounted_prices_for_promotion
 from ...product.utils.variants import fetch_variants_for_promotion_rules
 from .. import OrderStatus
 from ..calculations import refresh_all_order_base_prices_and_discounts
+from ..fetch import fetch_draft_order_lines_info
 
 
 @freeze_time("2020-03-18 12:00:00")
@@ -184,6 +188,34 @@ def test_refresh_all_order_base_prices_catalogue_discount(
     assert discount_2.value == new_reward_value_2
     assert discount_2.value_type == new_reward_value_type_2
     assert discount_2.amount.amount == expected_discount_amount_2
+
+
+def test_prepare_catalogue_discounts_removes_stale_discount_for_overridden_line(
+    order_with_lines_and_catalogue_promotion,
+):
+    # given
+    order = order_with_lines_and_catalogue_promotion
+    order.status = OrderStatus.DRAFT
+
+    discounted_line = order.lines.get(quantity=3)
+    assert discounted_line.discounts.filter(type=DiscountType.PROMOTION).exists()
+
+    # a manual price override should make the existing catalogue discount stale
+    discounted_line.is_price_overridden = True
+    discounted_line.undiscounted_base_unit_price_amount = (
+        discounted_line.base_unit_price_amount
+    )
+    discounted_line.save(
+        update_fields=["is_price_overridden", "undiscounted_base_unit_price_amount"]
+    )
+
+    lines_info = fetch_draft_order_lines_info(order, fetch_actual_prices=True)
+
+    # when
+    refresh_order_line_discount_objects_for_catalogue_promotions(lines_info)
+
+    # then
+    assert not discounted_line.discounts.filter(type=DiscountType.PROMOTION).exists()
 
 
 def test_refresh_all_order_base_prices_new_catalogue_discount(

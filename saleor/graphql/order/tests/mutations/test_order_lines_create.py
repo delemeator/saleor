@@ -1187,8 +1187,9 @@ def test_order_lines_create_with_custom_price_and_catalogue_discount(
     assert line_data["quantity"] == new_qty
     assert line_data["isPriceOverridden"] is True
     assert line_data["undiscountedUnitPrice"]["gross"]["amount"] == custom_price
-    assert line_data["unitPrice"]["gross"]["amount"] == custom_price - reward_value
-    assert line_data["unitDiscount"]["amount"] == reward_value
+    assert line_data["unitPrice"]["gross"]["amount"] == custom_price
+    assert line_data["unitDiscount"]["amount"] == 0
+    assert not order_line.discounts.filter(type=DiscountType.PROMOTION).exists()
 
 
 def test_order_lines_create_with_custom_price_force_new_line_and_catalogue_discount(
@@ -1248,11 +1249,68 @@ def test_order_lines_create_with_custom_price_force_new_line_and_catalogue_disco
     assert (
         discounted_line_data["undiscountedUnitPrice"]["gross"]["amount"] == custom_price
     )
-    assert (
-        discounted_line_data["unitPrice"]["gross"]["amount"]
-        == custom_price - reward_value
+    assert discounted_line_data["unitPrice"]["gross"]["amount"] == custom_price
+    assert discounted_line_data["unitDiscount"]["amount"] == 0
+
+
+def test_order_lines_create_with_custom_price_and_catalogue_discount_unconfirmed_order(
+    order_line_on_promotion,
+    permission_group_manage_orders,
+    staff_api_client,
+    warehouse,
+):
+    # given
+    # catalogue promotions still stack on top of a price override for
+    # unconfirmed orders - only draft orders skip the discount
+    query = ORDER_LINES_CREATE_MUTATION
+    order_line = order_line_on_promotion
+    order = order_line.order
+    order.status = OrderStatus.UNCONFIRMED
+    order.save(update_fields=["status"])
+
+    old_qty = order_line.quantity
+
+    variant = order_line.variant
+    variant_listings = variant.channel_listings.get(channel=order.channel)
+    promotion_rule = variant_listings.promotion_rules.first()
+    promotion_rule.variants.add(variant)
+    reward_value = promotion_rule.reward_value
+    assert promotion_rule.reward_value_type == DiscountValueType.FIXED
+
+    quantity = 1
+    Stock.objects.create(
+        warehouse=warehouse, product_variant=variant, quantity=quantity
     )
-    assert discounted_line_data["unitDiscount"]["amount"] == reward_value
+    order_id = graphene.Node.to_global_id("Order", order.id)
+    variant_id = graphene.Node.to_global_id("ProductVariant", variant.id)
+    custom_price = 18
+    force_new_line = False
+    variables = {
+        "orderId": order_id,
+        "variantId": variant_id,
+        "quantity": quantity,
+        "price": custom_price,
+        "forceNewLine": force_new_line,
+    }
+    permission_group_manage_orders.user_set.add(staff_api_client.user)
+
+    # when
+    response = staff_api_client.post_graphql(query, variables)
+
+    # then
+    content = get_graphql_content(response)
+
+    new_qty = quantity + old_qty
+
+    order_line.refresh_from_db()
+    data = content["data"]["orderLinesCreate"]
+    line_data = data["orderLines"][0]
+    assert line_data["quantity"] == new_qty
+    assert line_data["isPriceOverridden"] is True
+    assert line_data["undiscountedUnitPrice"]["gross"]["amount"] == custom_price
+    assert line_data["unitPrice"]["gross"]["amount"] == custom_price - reward_value
+    assert line_data["unitDiscount"]["amount"] == reward_value
+    assert order_line.discounts.filter(type=DiscountType.PROMOTION).exists()
 
 
 def test_order_lines_create_no_shipping_address(
