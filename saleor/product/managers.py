@@ -339,7 +339,8 @@ class ProductVariantQueryset(models.QuerySet):
         # that:
         # - have a variant channel listing for this channel and the price is not null
         # - have a product channel listing for this channel and the product is published
-        #  and visible in listings
+        # `visible_in_listings` is intentionally not checked here - it only hides a
+        # product from listing endpoints, not from its own `productVariants` field.
         variants = self.filter(
             channel_listings__channel_id=channel.id,
             channel_listings__price_amount__isnull=False,
@@ -351,7 +352,6 @@ class ProductVariantQueryset(models.QuerySet):
             | Q(product__channel_listings__published_at__isnull=True),
             product__channel_listings__is_published=True,
             product__channel_listings__channel_id=channel.id,
-            product__channel_listings__visible_in_listings=True,
         )
         return variants
 

@@ -383,6 +383,39 @@ def test_filter_not_published_product_is_unpublished(product, channel_USD):
     assert available_products.count() == 1
 
 
+def test_variant_visible_to_customer_ignores_visible_in_listings(
+    customer_user, product_list, channel_USD
+):
+    # given
+    # `visible_in_listings` only hides a product from listing endpoints - its
+    # variants stay visible while the product is published.
+    product_list[0].channel_listings.all().update(visible_in_listings=False)
+
+    # when
+    variants = models.ProductVariant.objects.visible_to_user(
+        customer_user, channel_USD, True
+    )
+
+    # then
+    assert variants.count() == models.ProductVariant.objects.count()
+
+
+def test_variant_not_visible_to_customer_when_product_not_published(
+    customer_user, product_list, channel_USD
+):
+    # given
+    product_list[0].channel_listings.all().update(is_published=False)
+
+    # when
+    variants = models.ProductVariant.objects.visible_to_user(
+        customer_user, channel_USD, True
+    )
+
+    # then
+    excluded = product_list[0].variants.count()
+    assert variants.count() == models.ProductVariant.objects.count() - excluded
+
+
 def test_filter_not_published_product_published_tomorrow(product, channel_USD):
     date_tomorrow = timezone.now() + datetime.timedelta(days=1)
     channel_listing = product.channel_listings.get()

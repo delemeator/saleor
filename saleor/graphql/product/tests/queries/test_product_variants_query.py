@@ -193,34 +193,39 @@ def test_product_variants_by_ids_that_do_not_exist(
     assert content["data"]["productVariants"]["edges"] == []
 
 
-def test_product_variants_visible_in_listings_by_customer(
-    user_api_client, product_list, channel_USD
-):
-    # given
-    product_list[0].channel_listings.all().update(visible_in_listings=False)
-
-    product_count = Product.objects.count()
-
-    # when
-    data = _fetch_all_variants(user_api_client, variables={"channel": channel_USD.slug})
-
-    assert data["totalCount"] == product_count - 1
-
-
-def test_product_variants_visible_in_listings_by_staff_without_manage_products(
-    staff_api_client, product_list, channel_USD
-):
-    # given
-    product_list[0].channel_listings.all().update(visible_in_listings=False)
-
-    product_count = Product.objects.count()
-
-    # when
-    data = _fetch_all_variants(
-        staff_api_client, variables={"channel": channel_USD.slug}
-    )
-
-    assert data["totalCount"] == product_count - 1  # invisible doesn't count
+# `visible_in_listings` no longer hides a product's variants (only listing endpoints
+# for products are affected), so these tests are obsolete:
+#
+# def test_product_variants_visible_in_listings_by_customer(
+#     user_api_client, product_list, channel_USD
+# ):
+#     # given
+#     product_list[0].channel_listings.all().update(visible_in_listings=False)
+#
+#     product_count = Product.objects.count()
+#
+#     # when
+#     data = _fetch_all_variants(
+#         user_api_client, variables={"channel": channel_USD.slug}
+#     )
+#
+#     assert data["totalCount"] == product_count - 1
+#
+#
+# def test_product_variants_visible_in_listings_by_staff_without_manage_products(
+#     staff_api_client, product_list, channel_USD
+# ):
+#     # given
+#     product_list[0].channel_listings.all().update(visible_in_listings=False)
+#
+#     product_count = Product.objects.count()
+#
+#     # when
+#     data = _fetch_all_variants(
+#         staff_api_client, variables={"channel": channel_USD.slug}
+#     )
+#
+#     assert data["totalCount"] == product_count - 1  # invisible doesn't count
 
 
 def test_product_variants_visible_in_listings_by_staff_with_perm(
@@ -241,18 +246,22 @@ def test_product_variants_visible_in_listings_by_staff_with_perm(
     assert data["totalCount"] == product_count
 
 
-def test_product_variants_visible_in_listings_by_app_without_manage_products(
-    app_api_client, product_list, channel_USD
-):
-    # given
-    product_list[0].channel_listings.all().update(visible_in_listings=False)
-
-    product_count = Product.objects.count()
-
-    # when
-    data = _fetch_all_variants(app_api_client, variables={"channel": channel_USD.slug})
-
-    assert data["totalCount"] == product_count - 1  # invisible doesn't count
+# `visible_in_listings` no longer hides a product's variants - test obsolete:
+#
+# def test_product_variants_visible_in_listings_by_app_without_manage_products(
+#     app_api_client, product_list, channel_USD
+# ):
+#     # given
+#     product_list[0].channel_listings.all().update(visible_in_listings=False)
+#
+#     product_count = Product.objects.count()
+#
+#     # when
+#     data = _fetch_all_variants(
+#         app_api_client, variables={"channel": channel_USD.slug}
+#     )
+#
+#     assert data["totalCount"] == product_count - 1  # invisible doesn't count
 
 
 def test_product_variants_visible_in_listings_by_app_with_perm(
