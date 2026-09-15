@@ -10,7 +10,7 @@ from django.conf import settings
 from PIL import Image
 
 from .....graphql.tests.utils import get_graphql_content, get_multipart_request_body
-from .....product import ProductMediaTypes
+from .....product import MEDIA_URL_CHAR_LIMIT, ProductMediaTypes
 from .....product.error_codes import ProductErrorCode
 from .....product.tests.utils import create_image, create_zip_file_with_image_ext
 
@@ -38,6 +38,7 @@ PRODUCT_MEDIA_CREATE_QUERY = """
             errors {
                 code
                 field
+                message
             }
         }
     }
@@ -83,6 +84,69 @@ def test_product_media_create_mutation(
 
     product_updated_mock.assert_called_once_with(product)
     product_media_created.assert_called_once_with(product_image)
+
+
+def test_product_media_create_mutation_file_size_exceeds_limit(
+    staff_api_client, product, permission_manage_products, media_root, settings
+):
+    # given
+    settings.MAX_IMAGE_FILE_SIZE = 1
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    image_file, image_name = create_image()
+    variables = {
+        "product": graphene.Node.to_global_id("Product", product.id),
+        "alt": "",
+        "image": image_name,
+    }
+    body = get_multipart_request_body(
+        PRODUCT_MEDIA_CREATE_QUERY, variables, image_file, image_name
+    )
+
+    # when
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)
+
+    # then
+    errors = content["data"]["productMediaCreate"]["errors"]
+    assert len(errors) == 1
+    assert errors[0]["field"] == "image"
+    assert errors[0]["code"] == ProductErrorCode.FILE_SIZE_LIMIT_EXCEEDED.name
+    assert "File size exceeds the maximum allowed size" in errors[0]["message"]
+    assert product.media.count() == 0
+
+
+def test_product_media_create_mutation_pixel_count_exceeds_limit(
+    monkeypatch, staff_api_client, product, permission_manage_products, media_root
+):
+    # given
+    # `settings.MAX_IMAGE_PIXELS` is applied to `PIL.Image.MAX_IMAGE_PIXELS` once at
+    # app startup, so patch Pillow directly; 0 rejects any image.
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 0)
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    image_file, image_name = create_image()
+    variables = {
+        "product": graphene.Node.to_global_id("Product", product.id),
+        "alt": "",
+        "image": image_name,
+    }
+    body = get_multipart_request_body(
+        PRODUCT_MEDIA_CREATE_QUERY, variables, image_file, image_name
+    )
+
+    # when
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)
+
+    # then
+    errors = content["data"]["productMediaCreate"]["errors"]
+    assert len(errors) == 1
+    assert errors[0]["field"] == "image"
+    assert errors[0]["code"] == ProductErrorCode.FILE_SIZE_LIMIT_EXCEEDED.name
+    assert errors[0]["message"] == (
+        "Image exceeds the maximum allowed number of pixels of "
+        f"{settings.MAX_IMAGE_PIXELS}."
+    )
+    assert product.media.exists() is False
 
 
 def test_product_media_create_mutation_without_file(
@@ -438,6 +502,34 @@ def test_product_media_create_mutation_alt_character_limit(
     errors = content["data"]["productMediaCreate"]["errors"]
     assert errors[0]["field"] == "input"
     assert errors[0]["code"] == ProductErrorCode.INVALID.name
+
+
+def test_product_media_create_mutation_media_url_character_limit(
+    staff_api_client, product, permission_manage_products, media_root
+):
+    # given
+    too_long_url = "https://example.com/" + "a" * MEDIA_URL_CHAR_LIMIT
+    variables = {
+        "product": graphene.Node.to_global_id("Product", product.id),
+        "mediaUrl": too_long_url,
+        "alt": "",
+    }
+    # when
+    response = staff_api_client.post_graphql(
+        PRODUCT_MEDIA_CREATE_QUERY,
+        variables,
+        permissions=[permission_manage_products],
+    )
+    content = get_graphql_content(response)
+
+    # then
+    errors = content["data"]["productMediaCreate"]["errors"]
+    assert len(errors) == 1
+    assert errors[0]["field"] == "mediaUrl"
+    assert errors[0]["code"] == ProductErrorCode.INVALID.name
+    assert errors[0]["message"] == (
+        f"URL field exceeds the character limit of {MEDIA_URL_CHAR_LIMIT}."
+    )
 
 
 def test_product_media_create_when_alt_is_null(

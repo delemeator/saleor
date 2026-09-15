@@ -493,6 +493,16 @@ COUNTRIES_OVERRIDE = {
 }
 
 MAX_USER_ADDRESSES = int(os.environ.get("MAX_USER_ADDRESSES", 100))
+MAX_IMAGE_FILE_SIZE = int(
+    os.environ.get("MAX_IMAGE_FILE_SIZE", 10 * 1024 * 1024)
+)  # 10MB
+
+# Maximum number of pixels (width * height) of an image we are willing to decode.
+# This bounds decode memory, which `MAX_IMAGE_FILE_SIZE` does not: an 8000x8000 WebP
+# is 0.11MB on disk but needs ~1GB of RAM to decode, because the encoded size says
+# nothing about the decoded size. The default admits 5000x5000 with some headroom.
+# Applied to Pillow in `CoreAppConfig.ready`.
+MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", 30_000_000))
 
 TEST_RUNNER = "saleor.tests.runner.PytestTestRunner"
 
@@ -840,6 +850,14 @@ def SENTRY_INIT(dsn: str, sentry_opts: dict):
         "street_address_1",
         "street_address_2",
         "user_email",
+        # Order/customer filter input (`customer` CharFilter) accepts a raw
+        # email or name fragment as a scalar string value, so the PII lives
+        # directly under the `customer` key rather than a nested `email` key.
+        # It must be denylisted by name; recursion alone won't redact it.
+        "customer",
+        "line1",
+        "line2",
+        "from_street_address",
     ]
 
     sentry_sdk.init(
@@ -847,7 +865,9 @@ def SENTRY_INIT(dsn: str, sentry_opts: dict):
         release=__version__,
         send_default_pii=False,
         event_scrubber=EventScrubber(
-            denylist=SALEOR_DENYLIST, pii_denylist=SALEOR_PII_DENYLIST
+            denylist=SALEOR_DENYLIST,
+            pii_denylist=SALEOR_PII_DENYLIST,
+            recursive=True,
         ),
         **sentry_opts,
     )
@@ -855,8 +875,17 @@ def SENTRY_INIT(dsn: str, sentry_opts: dict):
     ignore_logger("graphql.execution.executor")
 
 
+# Number of seconds after which GraphQL requests will marked
+# as slow (error status)
+GRAPHQL_SPANS_MARK_SLOW_AFTER: float = 30.0
+
 GRAPHQL_PAGINATION_LIMIT = 100
 GRAPHQL_MIDDLEWARE: list[str] = []
+GRAPHQL_ALIAS_COUNT_LIMIT: int = int(os.environ.get("GRAPHQL_ALIAS_COUNT_LIMIT", 100))
+GRAPHQL_MUTATION_COUNT_LIMIT: int = int(
+    os.environ.get("GRAPHQL_MUTATION_COUNT_LIMIT", 4)
+)
+GRAPHQL_BATCH_MAX_COUNT: int = int(os.environ.get("GRAPHQL_BATCH_MAX_COUNT", 1))
 
 # Set GRAPHQL_QUERY_MAX_COMPLEXITY=0 in env to disable (not recommended)
 GRAPHQL_QUERY_MAX_COMPLEXITY = int(
@@ -868,6 +897,32 @@ GRAPHQL_QUERY_MAX_COMPLEXITY = int(
 # may build a query that requests for potentially few thousands of entities.
 # Set FEDERATED_QUERY_MAX_ENTITIES=0 in env to disable (not recommended)
 FEDERATED_QUERY_MAX_ENTITIES = int(os.environ.get("FEDERATED_QUERY_MAX_ENTITIES", 100))
+
+# Optional - Python import path of a GraphQL resolver to allow Saleor to return
+# announcements. See ``saleor/site/apps.py`` and ``saleor/graphql/shop/types.py``
+# for details around the Announcements API.
+#
+# Value must be an import path, e.g.:
+#   SHOP_ANNOUNCEMENT_RESOLVER_IMPORT="saleor.custom.announcements.resolve_announcements"
+#
+# Where ``resolve_announcements`` should have the following signature:
+#
+# >>> from saleor.graphql.shop.types import Announcement
+# >>>
+# >>> def resolve_announcements() -> list[Announcement]: ...
+SHOP_ANNOUNCEMENT_RESOLVER_IMPORT = None
+
+# Optional - Python import path of a function returning the namespace (the
+# Postgres `classid` integer) used by ``saleor.core.db.locks`` for advisory
+# locks. When unset, the built-in default namespace is used.
+#
+# Value must be an import path, e.g.:
+#   ADVISORY_LOCK_NAMESPACE_IMPORT="saleor.custom.locks.get_namespace"
+#
+# Where ``get_namespace`` should have the following signature:
+#
+# >>> def get_namespace() -> int: ...
+ADVISORY_LOCK_NAMESPACE_IMPORT = None
 
 BUILTIN_PLUGINS = [
     "saleor.plugins.avatax.plugin.DeprecatedAvataxPlugin",
@@ -981,6 +1036,14 @@ PRODUCT_MAX_INDEXED_ATTRIBUTES = 1000
 PRODUCT_MAX_INDEXED_ATTRIBUTE_VALUES = 100
 PRODUCT_MAX_INDEXED_VARIANTS = 1000
 
+
+# Sets the default behavior for new Saleor installations.
+# When set to 'False', it disables account merging by default in DB
+# migrations, and when to 'True', it enables account merging but requires
+# password confirmation.
+# This setting has no effect against existing Saleor installations and
+# shouldn't be changed.
+ACCOUNT_CONFIRM_ASSOCIATE_ANONYMOUS_OBJECTS = False
 
 # Patch SubscriberExecutionContext class from `graphql-core-legacy` package
 # to fix bug causing not returning errors for subscription queries.

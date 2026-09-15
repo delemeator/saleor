@@ -3,7 +3,6 @@ from django.db import transaction
 
 from ....attribute import models as models
 from ....attribute.lock_objects import attribute_value_qs_select_for_update
-from ....permission.enums import ProductTypePermissions
 from ....webhook.event_types import WebhookEventAsyncType
 from ...core import ResolveInfo
 from ...core.context import ChannelContext
@@ -12,6 +11,10 @@ from ...core.types import AttributeError
 from ...core.utils import WebhookEventInfo
 from ...plugins.dataloaders import get_plugin_manager_promise
 from ..types import Attribute
+from .permissions import (
+    check_any_attribute_type_permission,
+    check_attribute_type_permissions,
+)
 
 
 class AttributeDelete(ModelDeleteMutation, ModelWithExtRefMutation):
@@ -25,8 +28,12 @@ class AttributeDelete(ModelDeleteMutation, ModelWithExtRefMutation):
     class Meta:
         model = models.Attribute
         object_type = Attribute
-        description = "Deletes an attribute."
-        permissions = (ProductTypePermissions.MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES,)
+        description = (
+            "Deletes an attribute.\n\nRequires one of the following permissions, "
+            "depending on the attribute type: "
+            "MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, "
+            "MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes."
+        )
         error_type_class = AttributeError
         error_type_field = "attribute_errors"
         webhook_events_info = [
@@ -52,7 +59,10 @@ class AttributeDelete(ModelDeleteMutation, ModelWithExtRefMutation):
         cls, _root, info: ResolveInfo, /, *, external_reference=None, id=None
     ):
         """Perform a mutation that deletes a model instance."""
+        # Concrete permission is checked after instance is resolved.
+        check_any_attribute_type_permission(cls, info.context)
         instance = cls.get_instance(info, external_reference=external_reference, id=id)
+        check_attribute_type_permissions(cls, info.context, [instance.type])
 
         cls.clean_instance(info, instance)
         db_id = instance.id

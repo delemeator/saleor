@@ -13,6 +13,7 @@ from ....attribute.models import (
     AssignedVariantAttribute,
     AssignedVariantAttributeValue,
     Attribute,
+    AttributeProduct,
     AttributeValue,
 )
 from ....product.models import Product, ProductVariant
@@ -202,10 +203,17 @@ def _clean_product_attributes_boolean_filter_input(
 
 def filter_products_by_attributes_values(qs, queries: T_PRODUCT_FILTER_QUERIES):
     filters = []
+    attribute_assigned_to_product_type = AttributeProduct.objects.using(qs.db).filter(
+        attribute_id=OuterRef("value__attribute_id"),
+        product_type_id=OuterRef(OuterRef("product_type_id")),
+    )
     for values in queries.values():
         assigned_product_attribute_values = AssignedProductAttributeValue.objects.using(
             qs.db
-        ).filter(value_id__in=values)
+        ).filter(
+            Exists(attribute_assigned_to_product_type),
+            value_id__in=values,
+        )
         product_attribute_filter = Q(
             Exists(assigned_product_attribute_values.filter(product_id=OuterRef("pk")))
         )
@@ -233,9 +241,16 @@ def filter_products_by_attributes_values(qs, queries: T_PRODUCT_FILTER_QUERIES):
 
 
 def filter_products_by_attributes_values_qs(qs, values_qs):
+    attribute_assigned_to_product_type = AttributeProduct.objects.using(qs.db).filter(
+        attribute_id=OuterRef("value__attribute_id"),
+        product_type_id=OuterRef(OuterRef("product_type_id")),
+    )
     assigned_product_attribute_values = AssignedProductAttributeValue.objects.using(
         qs.db
-    ).filter(value__in=values_qs)
+    ).filter(
+        Exists(attribute_assigned_to_product_type),
+        value__in=values_qs,
+    )
     product_attribute_filter = Q(
         Exists(assigned_product_attribute_values.filter(product_id=OuterRef("pk")))
     )

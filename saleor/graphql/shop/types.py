@@ -12,6 +12,7 @@ from ...core.utils import build_absolute_uri, get_domain, is_ssl_enabled
 from ...permission.auth_filters import AuthorizationFilters
 from ...permission.enums import AppPermission, SitePermissions, get_permissions
 from ...site import models as site_models
+from ...site.apps import SiteAppConfig
 from ..account.types import Address, AddressInput, StaffNotificationRecipient
 from ..app.types import App
 from ..core import ResolveInfo
@@ -21,6 +22,7 @@ from ..core.descriptions import (
     ADDED_IN_322,
     DEFAULT_DEPRECATION_REASON,
     DEPRECATED_IN_3X_INPUT,
+    DEPRECATED_LEGACY_PAYMENTS,
 )
 from ..core.doc_category import (
     DOC_CATEGORY_AUTH,
@@ -29,6 +31,7 @@ from ..core.doc_category import (
 )
 from ..core.enums import LanguageCodeEnum, WeightUnitsEnum
 from ..core.fields import PermissionsField
+from ..core.scalars import DateTime
 from ..core.tracing import traced_resolver
 from ..core.types import (
     BaseObjectType,
@@ -40,7 +43,7 @@ from ..core.types import (
     TimePeriod,
 )
 from ..core.utils import str_to_enum
-from ..meta.types import ObjectWithMetadata
+from ..meta.types import Metadata, ObjectWithMetadata
 from ..page.types import PageType
 from ..payment.types import PaymentGateway
 from ..plugins.dataloaders import plugin_manager_promise_callback
@@ -50,7 +53,11 @@ from ..translations.fields import TranslationField
 from ..translations.resolvers import resolve_translation
 from ..translations.types import ShopTranslation
 from ..utils import format_permissions_for_display
-from .enums import GiftCardSettingsExpiryTypeEnum
+from .enums import (
+    AccountConfirmModeEnum,
+    AnnouncementImportanceEnum,
+    GiftCardSettingsExpiryTypeEnum,
+)
 from .filters import CountryFilterInput
 from .resolvers import resolve_available_shipping_methods, resolve_countries
 
@@ -159,6 +166,46 @@ class LimitInfo(graphene.ObjectType):
         description = "Store the current and allowed usage."
 
 
+class Announcement(graphene.ObjectType):
+    created_at = DateTime(
+        required=True,
+        description="The date & time at which this announcement was created.",
+    )
+    updated_at = DateTime(
+        required=True,
+        description="The date & time at which this announcement was last updated.",
+    )
+
+    title = graphene.String(required=True, description="The announcement's title.")
+    message_html = graphene.String(
+        required=True,
+        description="The announcement's description, may contain HTML formatting.",
+    )
+    importance = AnnouncementImportanceEnum(
+        required=True,
+        description=(
+            "Determine the how critical the announcement is. UNSET if no "
+            "severity level was defined for this announcement."
+        ),
+    )
+
+    type = graphene.String(
+        required=True,
+        description=(
+            'The announcement\'s type, for example "CUSTOM". Used to '
+            "programatically distinguish between message types thus allowing to "
+            "render the message differently, and allows to know the expected shape "
+            "for the `extra` field."
+        ),
+    )
+    extra = Metadata(
+        required=True, description="Additional information about this announcement."
+    )
+
+    class Meta:
+        description = "Lists current announcements that the user should see."
+
+
 class Shop(graphene.ObjectType):
     id = graphene.ID(description="ID of the shop.", required=True)
     available_payment_gateways = NonNullList(
@@ -178,6 +225,7 @@ class Shop(graphene.ObjectType):
         ),
         description="List of available payment gateways.",
         required=True,
+        deprecation_reason=DEPRECATED_LEGACY_PAYMENTS,
     )
     available_external_authentications = NonNullList(
         ExternalAuthentication,
@@ -341,6 +389,12 @@ class Shop(graphene.ObjectType):
         deprecation_reason=DEFAULT_DEPRECATION_REASON,
         permissions=[AuthorizationFilters.AUTHENTICATED_STAFF_USER],
     )
+    announcements = PermissionsField(
+        NonNullList(Announcement),
+        required=True,
+        description="List of announcements for this shop.",
+        permissions=[AuthorizationFilters.AUTHENTICATED_STAFF_USER],
+    )
     version = PermissionsField(
         graphene.String,
         description="Saleor API version.",
@@ -397,6 +451,16 @@ class Shop(graphene.ObjectType):
         deprecation_reason="Use `ShippingMethodType.taxClass` to determine "
         "whether taxes are calculated for shipping methods; if a tax class is set, "
         "the taxes will be calculated, otherwise no tax rate will be applied.",
+        required=True,
+    )
+
+    account_confirm_merge_mode = AccountConfirmModeEnum(
+        description=(
+            "Controls the method used for merging existing orders and giftcards "
+            "when password-based authentication is used. "
+            "Learn more at "
+            "https://docs.saleor.io/upgrade-guides/core/migrate-account-merging"
+        ),
         required=True,
     )
 
@@ -625,6 +689,17 @@ class Shop(graphene.ObjectType):
         return LimitInfo(current_usage=Limits(), allowed_usage=Limits())
 
     @staticmethod
+    def resolve_announcements(_, _info):
+        """Return the list of announcements for this shop.
+
+        This is not implement in Saleor Core OSS. However, this can be implemented
+        by overriding ``settings.SHOP_ANNOUNCEMENT_RESOLVER_IMPORT``.
+        """
+        if SiteAppConfig.announcements_resolver is not None:
+            return SiteAppConfig.announcements_resolver()
+        return []
+
+    @staticmethod
     def resolve_version(_, _info):
         return __version__
 
@@ -691,3 +766,8 @@ class Shop(graphene.ObjectType):
     @load_site_callback
     def resolve_use_legacy_update_webhook_emission(_, _info, site):
         return site.settings.use_legacy_update_webhook_emission
+
+    @staticmethod
+    @load_site_callback
+    def resolve_account_confirm_merge_mode(_, _info, site):
+        return site.settings.account_confirm_merge_mode

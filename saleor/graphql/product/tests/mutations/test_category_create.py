@@ -8,7 +8,9 @@ from django.utils.functional import SimpleLazyObject
 from django.utils.text import slugify
 from freezegun import freeze_time
 
+from .....core.db.locks import AdvisoryLock
 from .....core.utils.json_serializer import CustomJsonEncoder
+from .....product.error_codes import ProductErrorCode
 from .....product.models import Category
 from .....product.tests.utils import create_image
 from .....tests.utils import dummy_editorjs
@@ -255,3 +257,68 @@ def test_category_create_mutation_without_background_image(
     content = get_graphql_content(response)
     data = content["data"]["categoryCreate"]
     assert data["errors"] == []
+
+
+def test_category_create_mutation_file_size_exceeds_limit(
+    staff_api_client, permission_manage_products, media_root, settings
+):
+    # given
+    settings.MAX_IMAGE_FILE_SIZE = 1
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    category_name = "Test category"
+    image_file, image_name = create_image()
+    variables = {
+        "name": category_name,
+        "backgroundImage": image_name,
+        "backgroundImageAlt": "Alt text",
+    }
+    body = get_multipart_request_body(
+        CATEGORY_CREATE_MUTATION, variables, image_file, image_name
+    )
+
+    # when
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)
+
+    # then
+    errors = content["data"]["categoryCreate"]["errors"]
+    assert len(errors) == 1
+    assert errors[0]["field"] == "backgroundImage"
+    assert errors[0]["code"] == ProductErrorCode.FILE_SIZE_LIMIT_EXCEEDED.name
+    assert "File size exceeds the maximum allowed size" in errors[0]["message"]
+    assert not Category.objects.filter(name=category_name).exists()
+
+
+@pytest.mark.parametrize("_case", ["root", "child"])
+def test_takes_category_tree_lock_before_insert(
+    _case,
+    staff_api_client,
+    category,
+    permission_manage_products,
+    assert_advisory_lock_before_tree_write,
+):
+    # given
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    category_name = "Locked category"
+    category_slug = "locked-category"
+    parent_pk = category.pk if _case == "child" else None
+    variables = {
+        "name": category_name,
+        "slug": category_slug,
+        "parentId": (
+            graphene.Node.to_global_id("Category", parent_pk) if parent_pk else None
+        ),
+    }
+
+    # when
+    with assert_advisory_lock_before_tree_write(
+        AdvisoryLock.CATEGORY_TREE, Category._meta.db_table
+    ):
+        response = staff_api_client.post_graphql(CATEGORY_CREATE_MUTATION, variables)
+
+    # then
+    content = get_graphql_content(response)
+    assert content["data"]["categoryCreate"]["errors"] == []
+    created_category = Category.objects.get(slug=category_slug)
+    assert created_category.name == category_name
+    assert created_category.parent_id == parent_pk

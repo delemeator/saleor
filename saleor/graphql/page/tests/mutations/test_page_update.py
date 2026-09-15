@@ -1984,7 +1984,9 @@ def test_update_page_with_numeric_attribute(
     assert len(attributes) == 1
     assert attributes[0]["attribute"]["slug"] == numeric_attribute.slug
     assert len(attributes[0]["values"]) == 1
-    assert attributes[0]["values"][0]["slug"] == f"page-{page.pk}_{numeric_attribute.pk}"
+    assert (
+        attributes[0]["values"][0]["slug"] == f"page-{page.pk}_{numeric_attribute.pk}"
+    )
     assert attributes[0]["values"][0]["name"] == numeric_name
 
     assigned_attributes = data["page"]["assignedAttributes"]

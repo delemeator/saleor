@@ -3,7 +3,6 @@ from django.core.exceptions import ValidationError
 
 from ....attribute import models as models
 from ....attribute.error_codes import AttributeErrorCode
-from ....permission.enums import ProductTypePermissions
 from ....webhook.event_types import WebhookEventAsyncType
 from ...core import ResolveInfo
 from ...core.context import ChannelContext
@@ -18,6 +17,10 @@ from ..descriptions import AttributeDescriptions, AttributeValueDescriptions
 from ..types import Attribute
 from .attribute_create import AttributeValueInput
 from .mixins import REFERENCE_TYPES_LIMIT, AttributeMixin
+from .permissions import (
+    check_any_attribute_type_permission,
+    check_attribute_type_permissions,
+)
 
 
 class AttributeValueUpdateInput(AttributeValueInput):
@@ -113,8 +116,12 @@ class AttributeUpdate(AttributeMixin, ModelWithExtRefMutation):
     class Meta:
         model = models.Attribute
         object_type = Attribute
-        description = "Updates attribute."
-        permissions = (ProductTypePermissions.MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES,)
+        description = (
+            "Updates attribute.\n\nRequires one of the following permissions, "
+            "depending on the attribute type: "
+            "MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, "
+            "MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes."
+        )
         error_type_class = AttributeError
         error_type_field = "attribute_errors"
         webhook_events_info = [
@@ -150,7 +157,10 @@ class AttributeUpdate(AttributeMixin, ModelWithExtRefMutation):
     def perform_mutation(  # type: ignore[override]
         cls, _root, info: ResolveInfo, /, *, external_reference=None, id=None, input
     ):
+        # Concrete permission is checked after instance is resolved.
+        check_any_attribute_type_permission(cls, info.context)
         instance = cls.get_instance(info, external_reference=external_reference, id=id)
+        check_attribute_type_permissions(cls, info.context, [instance.type])
 
         cls.validate_reference_types_limit(input)
         # Do cleaning and uniqueness checks

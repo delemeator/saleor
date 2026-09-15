@@ -1,9 +1,12 @@
+import logging
 from io import BytesIO
 from unittest.mock import Mock, patch
 
 import pytest
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from PIL import Image
 
 from ....core.error_codes import UploadErrorCode
@@ -99,6 +102,78 @@ def test_clean_image_file():
 
     # when & then
     clean_image_file({field: img}, field, ProductErrorCode)
+
+
+@override_settings(MAX_IMAGE_FILE_SIZE=1)
+def test_clean_image_file_file_size_exceeds_limit():
+    # given
+    img_data = BytesIO()
+    image = Image.new("RGB", size=(1, 1))
+    image.save(img_data, format="JPEG")
+    img = SimpleUploadedFile("product.jpg", img_data.getvalue(), "image/jpeg")
+    field = "image"
+
+    # when
+    with pytest.raises(ValidationError) as exc:
+        clean_image_file({field: img}, field, ProductErrorCode)
+
+    # then
+    assert exc.value.args[0][field].code == ProductErrorCode.FILE_SIZE_LIMIT_EXCEEDED
+    assert (
+        "File size exceeds the maximum allowed size" in exc.value.args[0][field].message
+    )
+
+
+@override_settings(MAX_IMAGE_FILE_SIZE=10 * 1024 * 1024)
+def test_clean_image_file_file_size_within_limit():
+    # given
+    img_data = BytesIO()
+    image = Image.new("RGB", size=(1, 1))
+    image.save(img_data, format="JPEG")
+    img = SimpleUploadedFile("product.jpg", img_data.getvalue(), "image/jpeg")
+    field = "image"
+
+    # when/then - should not raise
+    clean_image_file({field: img}, field, ProductErrorCode)
+
+
+def test_clean_image_file_pixel_count_exceeds_limit(monkeypatch, caplog):
+    # given
+    # Pillow only raises above *twice* `MAX_IMAGE_PIXELS`, so 0 rejects any image and a
+    # tiny image trips the same check a real oversized image would. The `settings`
+    # fixture cannot be used here: `settings.MAX_IMAGE_PIXELS` is applied to
+    # `PIL.Image.MAX_IMAGE_PIXELS` once at app startup.
+    pillow_limit = 0
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", pillow_limit)
+    caplog.set_level(logging.WARNING)
+    file_name = "product.jpg"
+    width, height = 1, 1
+    img_data = BytesIO()
+    image = Image.new("RGB", size=(width, height))
+    image.save(img_data, format="JPEG")
+    img = SimpleUploadedFile(file_name, img_data.getvalue(), "image/jpeg")
+    field = "image"
+
+    # when
+    with pytest.raises(ValidationError) as exc:
+        clean_image_file({field: img}, field, ProductErrorCode)
+
+    # then
+    pillow_error = (
+        f"Image size ({width * height} pixels) exceeds limit of "
+        f"{2 * pillow_limit} pixels, could be decompression bomb DOS attack."
+    )
+    assert exc.value.args[0][field].code == ProductErrorCode.FILE_SIZE_LIMIT_EXCEEDED
+    # the Pillow message must not leak to the user; it is only logged
+    assert exc.value.args[0][field].message == (
+        "Image exceeds the maximum allowed number of pixels of "
+        f"{settings.MAX_IMAGE_PIXELS}."
+    )
+    # the rejection must be traceable back to the file that caused it
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelno == logging.WARNING
+    assert caplog.records[0].image_source == file_name
+    assert caplog.records[0].pillow_error == pillow_error
 
 
 def test_clean_image_file_invalid_content_type():

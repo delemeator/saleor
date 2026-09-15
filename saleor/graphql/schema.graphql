@@ -645,7 +645,7 @@ type Query {
   payment(
     """ID of the payment."""
     id: ID!
-  ): Payment @doc(category: "Payments")
+  ): Payment @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   List of payments.
@@ -671,7 +671,7 @@ type Query {
     Retrieve the last n elements from the list. Note that the system only allows fetching a maximum of 100 objects in a single query.
     """
     last: Int
-  ): PaymentCountableConnection @doc(category: "Payments")
+  ): PaymentCountableConnection @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Look up a transaction by ID.
@@ -2260,25 +2260,25 @@ enum WebhookEventTypeEnum @doc(category: "Webhooks") {
   SHOP_METADATA_UPDATED
 
   """Listing available payment gateways."""
-  PAYMENT_LIST_GATEWAYS
+  PAYMENT_LIST_GATEWAYS @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Authorize payment."""
-  PAYMENT_AUTHORIZE
+  PAYMENT_AUTHORIZE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Capture payment."""
-  PAYMENT_CAPTURE
+  PAYMENT_CAPTURE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Refund payment."""
-  PAYMENT_REFUND
+  PAYMENT_REFUND @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Void payment."""
-  PAYMENT_VOID
+  PAYMENT_VOID @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Confirm payment."""
-  PAYMENT_CONFIRM
+  PAYMENT_CONFIRM @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Process payment."""
-  PAYMENT_PROCESS
+  PAYMENT_PROCESS @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Event called for checkout tax calculation."""
   CHECKOUT_CALCULATE_TAXES
@@ -2325,25 +2325,25 @@ type WebhookEventSync @doc(category: "Webhooks") {
 """Enum determining type of webhook."""
 enum WebhookEventTypeSyncEnum @doc(category: "Webhooks") {
   """Listing available payment gateways."""
-  PAYMENT_LIST_GATEWAYS
+  PAYMENT_LIST_GATEWAYS @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Authorize payment."""
-  PAYMENT_AUTHORIZE
+  PAYMENT_AUTHORIZE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Capture payment."""
-  PAYMENT_CAPTURE
+  PAYMENT_CAPTURE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Refund payment."""
-  PAYMENT_REFUND
+  PAYMENT_REFUND @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Void payment."""
-  PAYMENT_VOID
+  PAYMENT_VOID @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Confirm payment."""
-  PAYMENT_CONFIRM
+  PAYMENT_CONFIRM @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Process payment."""
-  PAYMENT_PROCESS
+  PAYMENT_PROCESS @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Event called for checkout tax calculation."""
   CHECKOUT_CALCULATE_TAXES
@@ -3546,7 +3546,7 @@ type User implements Node & ObjectWithMetadata @doc(category: "Users") {
   storedPaymentSources(
     """Slug of a channel for which the data should be returned."""
     channel: String
-  ): [PaymentSource!]
+  ): [PaymentSource!] @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """User language code."""
   languageCode: LanguageCodeEnum!
@@ -3806,7 +3806,7 @@ type Checkout implements Node & ObjectWithMetadata @doc(category: "Checkout") {
   Triggers the following webhook events:
   - PAYMENT_LIST_GATEWAYS (sync): Fetch payment gateways available for checkout.
   """
-  availablePaymentGateways: [PaymentGateway!]! @webhookEventsInfo(asyncEvents: [], syncEvents: [PAYMENT_LIST_GATEWAYS])
+  availablePaymentGateways: [PaymentGateway!]! @webhookEventsInfo(asyncEvents: [], syncEvents: [PAYMENT_LIST_GATEWAYS]) @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Email of a customer."""
   email: String
@@ -11077,7 +11077,7 @@ Determine the mark as paid strategy for the channel.
 """
 enum MarkAsPaidStrategyEnum @doc(category: "Channels") {
   TRANSACTION_FLOW
-  PAYMENT_FLOW
+  PAYMENT_FLOW @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
 """The `Day` scalar type represents number of days by integer value."""
@@ -12246,7 +12246,7 @@ type Order implements Node & ObjectWithMetadata @doc(category: "Orders") {
   transactions: [TransactionItem!]!
 
   """List of payments for the order."""
-  payments: [Payment!]!
+  payments: [Payment!]! @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Total amount of the order."""
   total: TaxedMoney!
@@ -12778,16 +12778,16 @@ enum OrderDiscountType @doc(category: "Discounts") {
 
 enum OrderAction @doc(category: "Payments") {
   """Represents the capture action."""
-  CAPTURE
+  CAPTURE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Represents a mark-as-paid action."""
   MARK_AS_PAID
 
   """Represents a refund action."""
-  REFUND
+  REFUND @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Represents a void action."""
-  VOID
+  VOID @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
 """Represents an Invoice."""
@@ -12938,7 +12938,11 @@ enum OrderChargeStatusEnum @doc(category: "Orders") {
   OVERCHARGED
 }
 
-"""Represents a payment of a given type."""
+"""
+Represents a payment of a given type.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type Payment implements Node & ObjectWithMetadata @doc(category: "Payments") {
   """ID of the payment."""
   id: ID!
@@ -13051,7 +13055,11 @@ type Payment implements Node & ObjectWithMetadata @doc(category: "Payments") {
   pspReference: String
 }
 
-"""An object representing a single payment."""
+"""
+An object representing a single payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type Transaction implements Node @doc(category: "Payments") {
   """ID of the transaction."""
   id: ID!
@@ -13075,23 +13083,23 @@ type Transaction implements Node @doc(category: "Payments") {
   error: String
 
   """Response returned by payment gateway."""
-  gatewayResponse: JSONString! @deprecated(reason: "This field is a part of a legacy Payments API. Please use apps instead.")
+  gatewayResponse: JSONString! @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Total amount of the transaction."""
   amount: Money
 }
 
 enum TransactionKind @doc(category: "Payments") {
-  EXTERNAL
-  AUTH
-  PENDING
-  ACTION_TO_CONFIRM
-  REFUND
-  REFUND_ONGOING
-  CAPTURE
-  VOID
-  CONFIRM
-  CANCEL
+  EXTERNAL @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  AUTH @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  PENDING @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  ACTION_TO_CONFIRM @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  REFUND @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  REFUND_ONGOING @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  CAPTURE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  VOID @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  CONFIRM @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
+  CANCEL @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
 type CreditCard @doc(category: "Payments") {
@@ -14233,6 +14241,8 @@ enum CustomerEventsEnum @doc(category: "Users") {
 
 """
 Represents a payment source stored for user in payment gateway, such as credit card.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
 """
 type PaymentSource @doc(category: "Payments") {
   """Payment gateway name."""
@@ -15271,7 +15281,7 @@ type Shop implements ObjectWithMetadata {
 
     """Slug of a channel for which the data should be returned."""
     channel: String
-  ): [PaymentGateway!]!
+  ): [PaymentGateway!]! @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """List of available external authentications."""
   availableExternalAuthentications: [ExternalAuthentication!]!
@@ -15436,6 +15446,13 @@ type Shop implements ObjectWithMetadata {
   limits: LimitInfo! @deprecated
 
   """
+  List of announcements for this shop.
+  
+  Requires one of the following permissions: AUTHENTICATED_STAFF_USER.
+  """
+  announcements: [Announcement!]!
+
+  """
   Saleor API version.
   
   Requires one of the following permissions: AUTHENTICATED_STAFF_USER, AUTHENTICATED_APP.
@@ -15471,6 +15488,11 @@ type Shop implements ObjectWithMetadata {
 
   """Charge taxes on shipping."""
   chargeTaxesOnShipping: Boolean! @deprecated(reason: "Use `ShippingMethodType.taxClass` to determine whether taxes are calculated for shipping methods; if a tax class is set, the taxes will be calculated, otherwise no tax rate will be applied.")
+
+  """
+  Controls the method used for merging existing orders and giftcards when password-based authentication is used. Learn more at https://docs.saleor.io/upgrade-guides/core/migrate-account-merging
+  """
+  accountConfirmMergeMode: AccountConfirmModeEnum!
 
   """
   Use legacy update webhook emission. When enabled, update webhooks (e.g. `customerUpdated`,`productVariantUpdated`) are sent even when only metadata changes. When disabled, update webhooks are not sent for metadata-only changes; only metadata-specific webhooks (e.g., `customerMetadataUpdated`, `productVariantMetadataUpdated`) are sent.
@@ -15564,6 +15586,62 @@ type Limits {
 
   """Defines the number of warehouses."""
   warehouses: Int
+}
+
+"""Lists current announcements that the user should see."""
+type Announcement {
+  """The date & time at which this announcement was created."""
+  createdAt: DateTime!
+
+  """The date & time at which this announcement was last updated."""
+  updatedAt: DateTime!
+
+  """The announcement's title."""
+  title: String!
+
+  """The announcement's description, may contain HTML formatting."""
+  messageHtml: String!
+
+  """
+  Determine the how critical the announcement is. UNSET if no severity level was defined for this announcement.
+  """
+  importance: AnnouncementImportanceEnum!
+
+  """
+  The announcement's type, for example "CUSTOM". Used to programatically distinguish between message types thus allowing to render the message differently, and allows to know the expected shape for the `extra` field.
+  """
+  type: String!
+
+  """Additional information about this announcement."""
+  extra: Metadata!
+}
+
+"""Defines a shop-level announcement's level/severity."""
+enum AnnouncementImportanceEnum @doc(category: "Shop") {
+  CRITICAL
+  HIGH
+  MODERATE
+  LOW
+  UNSET
+}
+
+"""
+AccountConfirmMode set the account merging mode for anonymous objects.
+
+    This dictates the behavior of the `confirmAccount()` mutation for
+    password-based authentication when attempting to merge orders & giftcard
+    that aren't associated to a user account.
+
+    Modes:
+
+    - MERGE_DISABLED disables merging only when the authentication method
+      is password (i.e., when not using OIDC)
+    - REQUIRE_PASSWORD enables account merging who accounts that use password
+      authentication but it requires the user to enter their password
+"""
+enum AccountConfirmModeEnum @doc(category: "Authentication") {
+  MERGE_DISABLED
+  REQUIRE_PASSWORD
 }
 
 """Gift card related settings from site settings."""
@@ -15807,6 +15885,11 @@ type PaymentCountableEdge @doc(category: "Payments") {
   cursor: String!
 }
 
+"""
+Filtering options for payments.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 input PaymentFilterInput @doc(category: "Payments") {
   """Filter by ids."""
   ids: [ID!]
@@ -16008,7 +16091,7 @@ enum OrderSortField @doc(category: "Orders") {
   CUSTOMER
 
   """Sort orders by payment status."""
-  PAYMENT
+  PAYMENT @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Sort orders by fulfillment status."""
   FULFILLMENT_STATUS @deprecated(reason: "Use `STATUS` instead.")
@@ -16022,7 +16105,8 @@ enum OrderSortField @doc(category: "Orders") {
 }
 
 input OrderFilterInput @doc(category: "Orders") {
-  paymentStatus: [PaymentChargeStatusEnum!]
+  """Filter orders by payment charge status."""
+  paymentStatus: [PaymentChargeStatusEnum!] @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
   status: [OrderStatusFilter!]
   customer: String
   created: DateRangeInput
@@ -17274,7 +17358,7 @@ enum CheckoutSortField @doc(category: "Checkout") {
   CUSTOMER
 
   """Sort checkouts by payment."""
-  PAYMENT
+  PAYMENT @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
 input CheckoutFilterInput @doc(category: "Checkout") {
@@ -18982,7 +19066,7 @@ type Mutation {
 
     """Payment ID."""
     paymentId: ID!
-  ): PaymentCapture @doc(category: "Payments")
+  ): PaymentCapture @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Refunds the captured payment amount. 
@@ -18995,7 +19079,7 @@ type Mutation {
 
     """Payment ID."""
     paymentId: ID!
-  ): PaymentRefund @doc(category: "Payments")
+  ): PaymentRefund @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Voids the authorized payment. 
@@ -19005,7 +19089,7 @@ type Mutation {
   paymentVoid(
     """Payment ID."""
     paymentId: ID!
-  ): PaymentVoid @doc(category: "Payments")
+  ): PaymentVoid @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Initializes payment process when it is required by gateway."""
   paymentInitialize(
@@ -19017,13 +19101,13 @@ type Mutation {
 
     """Client-side generated data required to initialize the payment."""
     paymentData: JSONString
-  ): PaymentInitialize @doc(category: "Payments")
+  ): PaymentInitialize @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Check payment balance."""
   paymentCheckBalance(
     """Fields required to check payment balance."""
     input: PaymentCheckBalanceInput!
-  ): PaymentCheckBalance @doc(category: "Payments")
+  ): PaymentCheckBalance @doc(category: "Payments") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Creates transaction for checkout or order. 
@@ -19610,7 +19694,7 @@ type Mutation {
 
     """ID of the order to capture."""
     id: ID!
-  ): OrderCapture @doc(category: "Orders")
+  ): OrderCapture @doc(category: "Orders") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Confirms an unconfirmed order by changing status to unfulfilled. 
@@ -19886,7 +19970,7 @@ type Mutation {
 
     """ID of the order to refund."""
     id: ID!
-  ): OrderRefund @doc(category: "Orders")
+  ): OrderRefund @doc(category: "Orders") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Updates an order. 
@@ -19925,7 +20009,7 @@ type Mutation {
   orderVoid(
     """ID of the order to void."""
     id: ID!
-  ): OrderVoid @doc(category: "Orders")
+  ): OrderVoid @doc(category: "Orders") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Cancels orders. 
@@ -21173,7 +21257,7 @@ type Mutation {
 
     """Checkout token."""
     token: UUID @deprecated(reason: "Use `id` instead.")
-  ): CheckoutPaymentCreate @doc(category: "Checkout")
+  ): CheckoutPaymentCreate @doc(category: "Checkout") @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Updates shipping address in the existing checkout.
@@ -21403,9 +21487,9 @@ type Mutation {
   ): AttributeCreate @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_CREATED], syncEvents: [])
 
   """
-  Deletes an attribute. 
+  Deletes an attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_DELETED (async): An attribute was deleted.
@@ -21419,9 +21503,9 @@ type Mutation {
   ): AttributeDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_DELETED], syncEvents: [])
 
   """
-  Updates attribute. 
+  Updates attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_UPDATED (async): An attribute was updated.
@@ -21497,9 +21581,9 @@ type Mutation {
   ): AttributeBulkTranslate @doc(category: "Attributes")
 
   """
-  Deletes attributes. 
+  Deletes attributes.
   
-  Requires one of the following permissions: MANAGE_PAGE_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the type of each attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_DELETED (async): An attribute was deleted.
@@ -21510,9 +21594,9 @@ type Mutation {
   ): AttributeBulkDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_DELETED], syncEvents: [])
 
   """
-  Deletes values of attributes. 
+  Deletes values of attributes.
   
-  Requires one of the following permissions: MANAGE_PAGE_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the type of each value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_VALUE_DELETED (async): An attribute value was deleted.
@@ -21524,9 +21608,9 @@ type Mutation {
   ): AttributeValueBulkDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_VALUE_DELETED, ATTRIBUTE_UPDATED], syncEvents: [])
 
   """
-  Creates a value for an attribute. 
+  Creates a value for an attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCTS.
+  Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_VALUE_CREATED (async): An attribute value was created.
@@ -21541,9 +21625,9 @@ type Mutation {
   ): AttributeValueCreate @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_VALUE_CREATED, ATTRIBUTE_UPDATED], syncEvents: [])
 
   """
-  Deletes a value of an attribute. 
+  Deletes a value of an attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the type of the value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_VALUE_DELETED (async): An attribute value was deleted.
@@ -21558,9 +21642,9 @@ type Mutation {
   ): AttributeValueDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEvents: [ATTRIBUTE_VALUE_DELETED, ATTRIBUTE_UPDATED], syncEvents: [])
 
   """
-  Updates value of an attribute. 
+  Updates value of an attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the type of the value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_VALUE_UPDATED (async): An attribute value was updated.
@@ -21607,9 +21691,9 @@ type Mutation {
   ): AttributeValueTranslate @doc(category: "Attributes")
 
   """
-  Reorder the values of an attribute. 
+  Reorder the values of an attribute.
   
-  Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+  Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
   
   Triggers the following webhook events:
   - ATTRIBUTE_VALUE_UPDATED (async): An attribute value was updated.
@@ -21929,6 +22013,11 @@ type Mutation {
   confirmAccount(
     """E-mail of the user performing account confirmation."""
     email: String!
+
+    """
+    Password of the user confirming their account. Required when `REQUIRED_PASSWORD` mode is enabled in shop settings. Learn more at https://docs.saleor.io/upgrade-guides/core/migrate-account-merging
+    """
+    password: String
 
     """A one-time token required to confirm the account."""
     token: String!
@@ -23398,6 +23487,11 @@ input ShopSettingsInput {
   Added in Saleor 3.22.
   """
   useLegacyUpdateWebhookEmission: Boolean @deprecated
+
+  """
+  Controls the method used for merging existing orders and giftcards when password-based authentication is used. Learn more at https://docs.saleor.io/upgrade-guides/core/migrate-account-merging
+  """
+  accountConfirmMergeMode: AccountConfirmModeEnum
 }
 
 """
@@ -23985,6 +24079,7 @@ enum ProductErrorCode @doc(category: "Products") {
   PREORDER_VARIANT_CANNOT_BE_DEACTIVATED
   INVALID_FILE_TYPE
   UNSUPPORTED_MIME_TYPE
+  FILE_SIZE_LIMIT_EXCEEDED
 }
 
 input ProductAttributeAssignInput @doc(category: "Products") {
@@ -24196,6 +24291,7 @@ enum CollectionErrorCode @doc(category: "Products") {
   REQUIRED
   UNIQUE
   CANNOT_MANAGE_PRODUCT_WITHOUT_VARIANT
+  FILE_SIZE_LIMIT_EXCEEDED
 }
 
 """
@@ -24660,6 +24756,7 @@ enum ProductBulkCreateErrorCode @doc(category: "Products") {
   UNIQUE
   PRODUCT_NOT_ASSIGNED_TO_CHANNEL
   UNSUPPORTED_MEDIA_PROVIDER
+  FILE_SIZE_LIMIT_EXCEEDED
 }
 
 input ProductBulkCreateInput @doc(category: "Products") {
@@ -26174,6 +26271,8 @@ type PaymentInitialize @doc(category: "Payments") {
 
 """
 Server-side data generated by a payment gateway. Optional step when the payment provider requires an additional action to initialize payment session.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
 """
 type PaymentInitialized @doc(category: "Payments") {
   """ID of a payment gateway."""
@@ -26194,6 +26293,11 @@ type PaymentCheckBalance @doc(category: "Payments") {
   errors: [PaymentError!]!
 }
 
+"""
+Fields required to check a payment balance.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 input PaymentCheckBalanceInput @doc(category: "Payments") {
   """An ID of a payment gateway to check."""
   gatewayId: String!
@@ -26208,6 +26312,11 @@ input PaymentCheckBalanceInput @doc(category: "Payments") {
   card: CardInput!
 }
 
+"""
+Card data used to check a payment balance.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 input CardInput {
   """
   Payment method nonce, a token returned by the appropriate provider's SDK.
@@ -31219,6 +31328,11 @@ type CheckoutPaymentCreate @doc(category: "Checkout") {
   errors: [PaymentError!]!
 }
 
+"""
+Fields required to create a payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 input PaymentInput @doc(category: "Payments") {
   """A gateway to use with that payment."""
   gateway: String!
@@ -31254,15 +31368,15 @@ enum StorePaymentMethodEnum @doc(category: "Payments") {
   """
   On session storage type. The payment is stored only to be reused when the customer is present in the checkout flow.
   """
-  ON_SESSION
+  ON_SESSION @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """
   Off session storage type. The payment is stored to be reused even if the customer is absent.
   """
-  OFF_SESSION
+  OFF_SESSION @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 
   """Storage is disabled. The payment is not stored."""
-  NONE
+  NONE @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
 """
@@ -31872,9 +31986,9 @@ input AttributeValueCreateInput @doc(category: "Attributes") {
 }
 
 """
-Deletes an attribute. 
+Deletes an attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_DELETED (async): An attribute was deleted.
@@ -31886,9 +32000,9 @@ type AttributeDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEvents
 }
 
 """
-Updates attribute. 
+Updates attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_UPDATED (async): An attribute was updated.
@@ -32165,9 +32279,9 @@ input AttributeBulkTranslateInput @doc(category: "Attributes") {
 }
 
 """
-Deletes attributes. 
+Deletes attributes.
 
-Requires one of the following permissions: MANAGE_PAGE_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the type of each attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_DELETED (async): An attribute was deleted.
@@ -32180,9 +32294,9 @@ type AttributeBulkDelete @doc(category: "Attributes") @webhookEventsInfo(asyncEv
 }
 
 """
-Deletes values of attributes. 
+Deletes values of attributes.
 
-Requires one of the following permissions: MANAGE_PAGE_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the type of each value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_VALUE_DELETED (async): An attribute value was deleted.
@@ -32196,9 +32310,9 @@ type AttributeValueBulkDelete @doc(category: "Attributes") @webhookEventsInfo(as
 }
 
 """
-Creates a value for an attribute. 
+Creates a value for an attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCTS.
+Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_VALUE_CREATED (async): An attribute value was created.
@@ -32213,9 +32327,9 @@ type AttributeValueCreate @doc(category: "Attributes") @webhookEventsInfo(asyncE
 }
 
 """
-Deletes a value of an attribute. 
+Deletes a value of an attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the type of the value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_VALUE_DELETED (async): An attribute value was deleted.
@@ -32230,9 +32344,9 @@ type AttributeValueDelete @doc(category: "Attributes") @webhookEventsInfo(asyncE
 }
 
 """
-Updates value of an attribute. 
+Updates value of an attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the type of the value's attribute: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_VALUE_UPDATED (async): An attribute value was updated.
@@ -32328,9 +32442,9 @@ type AttributeValueTranslate @doc(category: "Attributes") {
 }
 
 """
-Reorder the values of an attribute. 
+Reorder the values of an attribute.
 
-Requires one of the following permissions: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
+Requires one of the following permissions, depending on the attribute type: MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES for `PRODUCT_TYPE` attributes, MANAGE_PAGE_TYPES_AND_ATTRIBUTES for `PAGE_TYPE` attributes.
 
 Triggers the following webhook events:
 - ATTRIBUTE_VALUE_UPDATED (async): An attribute value was updated.
@@ -32916,6 +33030,7 @@ enum AccountErrorCode @doc(category: "Users") {
   ACCOUNT_NOT_CONFIRMED
   LOGIN_ATTEMPT_DELAYED
   UNKNOWN_IP_ADDRESS
+  FILE_SIZE_LIMIT_EXCEEDED
 }
 
 """
@@ -37234,7 +37349,11 @@ type ThumbnailCreated implements Event @doc(category: "Miscellaneous") {
   mediaUrl: String
 }
 
-"""Authorize payment."""
+"""
+Authorize payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentAuthorize implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37249,10 +37368,14 @@ type PaymentAuthorize implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""Capture payment."""
+"""
+Capture payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentCaptureEvent implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37267,10 +37390,14 @@ type PaymentCaptureEvent implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""Refund payment."""
+"""
+Refund payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentRefundEvent implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37285,10 +37412,14 @@ type PaymentRefundEvent implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""Void payment."""
+"""
+Void payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentVoidEvent implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37303,10 +37434,14 @@ type PaymentVoidEvent implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""Confirm payment."""
+"""
+Confirm payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentConfirmEvent implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37321,10 +37456,14 @@ type PaymentConfirmEvent implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""Process payment."""
+"""
+Process payment.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentProcessEvent implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -37339,10 +37478,14 @@ type PaymentProcessEvent implements Event @doc(category: "Payments") {
   recipient: App
 
   """Look up a payment."""
-  payment: Payment
+  payment: Payment @deprecated(reason: "The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.")
 }
 
-"""List payment gateways."""
+"""
+List payment gateways.
+
+The legacy Payments API is deprecated and will be removed. Use the Transactions API instead.
+"""
 type PaymentListGateways implements Event @doc(category: "Payments") {
   """Time of the event."""
   issuedAt: DateTime
@@ -38014,6 +38157,13 @@ type AssignedSwatchAttributeValue @doc(category: "Attributes") {
 
   """File associated with the attribute."""
   file: File
+
+  """
+  Translation of the name.
+  
+  Added in Saleor 3.22.
+  """
+  translation(languageCode: LanguageCodeEnum!): String
 }
 
 """
