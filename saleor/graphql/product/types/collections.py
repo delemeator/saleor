@@ -5,7 +5,9 @@ from graphene import relay
 from promise import Promise
 
 from ....permission.enums import ProductPermissions
+from ....permission.utils import has_one_of_permissions
 from ....product import models
+from ....product.models import ALL_PRODUCTS_PERMISSIONS
 from ....product.search import search_products
 from ....thumbnail.utils import (
     get_image_or_proxy_url,
@@ -141,12 +143,20 @@ class Collection(ChannelContextType[models.Collection]):
         search = kwargs.get("search")
 
         requestor = get_user_or_app_from_context(info.context)
+        has_required_permissions = has_one_of_permissions(
+            requestor, ALL_PRODUCTS_PERMISSIONS
+        )
         limited_channel_access = False if root.channel_slug is None else True
 
         def _resolve_products(channel):
             qs = root.node.products.using(
                 get_database_connection_name(info.context)
             ).visible_to_user(requestor, channel, limited_channel_access)
+
+            if not has_required_permissions:
+                qs = qs.annotate_visible_in_listings(channel).exclude(
+                    visible_in_listings=False,
+                )
 
             if search:
                 qs = ChannelQsContext(
