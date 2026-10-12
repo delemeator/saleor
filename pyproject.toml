@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saleor"
-version = "3.22.69"
+version = "3.22.73"
 description = "A modular, high performance, headless e-commerce platform built with Python, GraphQL, Django, and React."
 requires-python = ">=3.12,<3.13"
 readme = "README.md"
@@ -21,10 +21,10 @@ dependencies = [
   "boto3~=1.28",
   "botocore~=1.37",
   "braintree>=4.2,<4.32",
-  "cryptography>=50.0.1",
+  "cryptography>=50.0.2",
   "dj-database-url>=2,<3",
   "dj-email-url>=1,<2",
-  "django[bcrypt]~=5.2.17",
+  "django[bcrypt]~=5.2.18",
   "django-cache-url>=3.1.2,<4",
   "django-celery-beat>=2.8.1,<3",
   "django-countries~=7.2",
@@ -55,7 +55,7 @@ dependencies = [
   "prices~=1.0",
   "promise~=2.3",
   "pybars3>=0.9.7,<0.10",
-  "pyjwt>=2.14.0,<3",
+  "pyjwt>=2.15.0,<3",
   "python-dateutil>=2.8.2,<3",
   "python-http-client>=3.3.7,<4",
   "python-json-logger>=0.1.11,<3.3.0",
@@ -70,7 +70,7 @@ dependencies = [
   "sentry-sdk~=2.12",
   "stripe>=3.0.0,<4",
   "text-unidecode~=1.2",
-  "urllib3>=2.7.0,<3",
+  "urllib3>=2.8.0,<3",
   "uvicorn[standard]>=0.32.0,<0.33",
   "psycopg[binary]>=3.2.9,<4",
   "pydantic>=2.11.0,<3",
@@ -194,9 +194,10 @@ exclude-newer = "3 weeks"
 [tool.uv.exclude-newer-package]
 # To customize on a per-package basis, for example you can do this:
 # setuptools = "2026-04-07T14:30:00Z"
-django = "2026-08-04T15:05:00Z" # https://www.djangoproject.com/weblog/2026/aug/04/security-releases/
-cryptography = "2026-08-25T19:45:45.499357Z" # https://pypi.org/pypi/cryptography/50.0.1/json
-pyjwt = "2026-09-11T13:11:54.638995Z" # https://pypi.org/pypi/pyjwt/2.14.0/json
+cryptography = "2026-09-30T15:31:00Z" # https://pypi.org/pypi/cryptography/50.0.2/json
+pyjwt = "2026-09-23T16:57:00Z" # https://pypi.org/pypi/pyjwt/2.15.0/json
+urllib3 = "2026-09-15T19:30:00Z" # https://pypi.org/pypi/urllib3/2.8.0/json
+django = "2026-10-06T13:02:00Z" # https://pypi.org/pypi/django/5.2.18/json
 
 [tool.deptry]
 extend_exclude = [ "conftest\\.py", ".*/conftest\\.py", ".*/tests/.*" ]
