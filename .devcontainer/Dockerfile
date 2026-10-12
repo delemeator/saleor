@@ -18,6 +18,10 @@ RUN apt-get update \
   # Required to allows to identify file types when handling file uploads
   media-types
 
+# The base image ships pipx-installed pytest and mypy in /usr/local/py-utils/bin,
+# which comes first on PATH and shadows the versions pinned in uv.lock
+RUN pipx uninstall pytest && pipx uninstall mypy
+
 COPY --from=ghcr.io/astral-sh/uv:0.12.1@sha256:cf4eedcaa81655197f625739489effcbe71b61ceb1506f332c3facae5deceded \
   /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_SYSTEM_PYTHON=1 UV_PROJECT_ENVIRONMENT=/usr/local
