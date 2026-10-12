@@ -90,6 +90,60 @@ def test_update_discounted_price_for_promotion_discount_on_variant(
     )
 
 
+def test_update_discounted_price_for_promotion_sets_applied_rule_on_first_run(
+    product, channel_USD
+):
+    # given
+    variant = product.variants.first()
+    variant_channel_listing = variant.channel_listings.get(channel_id=channel_USD.id)
+    variant_price = Money("9.99", "USD")
+    variant_channel_listing.price = variant_price
+    variant_channel_listing.discounted_price = variant_price
+    variant_channel_listing.save()
+
+    reward_value = Decimal(2)
+    promotion = Promotion.objects.create(
+        name="Promotion",
+    )
+    rule = promotion.rules.create(
+        name="Fixed promotion rule",
+        promotion=promotion,
+        catalogue_predicate={
+            "variantPredicate": {
+                "ids": [graphene.Node.to_global_id("ProductVariant", variant.id)]
+            }
+        },
+        reward_value_type=RewardValueType.FIXED,
+        reward_value=reward_value,
+    )
+    rule.channels.add(variant_channel_listing.channel)
+    rule.variants.add(variant)
+
+    assert variant_channel_listing.applied_rule_id is None
+    assert (
+        VariantChannelListingPromotionRule.objects.filter(
+            variant_channel_listing=variant_channel_listing
+        ).exists()
+        is False
+    )
+
+    # when
+    update_discounted_prices_for_promotion(Product.objects.filter(id__in=[product.id]))
+
+    # then
+    variant_channel_listing.refresh_from_db()
+    assert variant_channel_listing.applied_rule == rule
+    assert (
+        variant_channel_listing.discounted_price_amount
+        == variant_price.amount - reward_value
+    )
+    listing_promotion_rule = VariantChannelListingPromotionRule.objects.get(
+        variant_channel_listing=variant_channel_listing
+    )
+    assert listing_promotion_rule.promotion_rule == rule
+    assert listing_promotion_rule.discount_amount == reward_value
+
+
 def test_update_discounted_price_for_promotion_discount_on_product(
     product, channel_USD
 ):
@@ -373,6 +427,8 @@ def test_update_discounted_price_for_promotion_discount_not_valid_anymore(
         reward_value=reward_value,
     )
     rule.channels.add(variant_channel_listing.channel)
+    variant_channel_listing.applied_rule = rule
+    variant_channel_listing.save(update_fields=["applied_rule"])
 
     listing_promotion_rule = VariantChannelListingPromotionRule.objects.create(
         variant_channel_listing=variant_channel_listing,
@@ -389,6 +445,7 @@ def test_update_discounted_price_for_promotion_discount_not_valid_anymore(
     variant_channel_listing.refresh_from_db()
     assert product_channel_listing.discounted_price_amount == variant_price.amount
     assert variant_channel_listing.discounted_price_amount == variant_price.amount
+    assert variant_channel_listing.applied_rule is None
     assert variant_channel_listing.promotion_rules.count() == 0
 
     with pytest.raises(listing_promotion_rule._meta.model.DoesNotExist):
@@ -541,6 +598,7 @@ def test_update_discounted_price_for_promotion_promotion_rule_deleted_in_meantim
     variant_channel_listing.refresh_from_db()
     assert product_channel_listing.discounted_price_amount == expected_price_amount
     assert variant_channel_listing.discounted_price_amount == expected_price_amount
+    assert variant_channel_listing.applied_rule is None
     assert not variant_channel_listing.promotion_rules.all()
     assert not variant_channel_listing.variantlistingpromotionrule.exists()
 

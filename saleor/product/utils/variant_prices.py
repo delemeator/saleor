@@ -350,15 +350,8 @@ def _get_discounted_variants_prices_for_promotions(
         discounted_variant_price = variant_listing.price
 
         rule_id = None
-        applied_rule = None
         if applied_discount:
             rule_id, discount = applied_discount
-            variant_listing_rule = variant_listing_to_listing_rule_per_rule_map[
-                variant_listing.id
-            ].get(rule_id)
-            if variant_listing_rule:
-                applied_rule = variant_listing_rule.promotion_rule
-
             discounted_variant_price -= discount
             discounted_variant_price = max(
                 discounted_variant_price, zero_money(discounted_variant_price.currency)
@@ -391,10 +384,10 @@ def _get_discounted_variants_prices_for_promotions(
             )
 
         if variant_listing.discounted_price != discounted_variant_price or (
-            variant_listing.applied_rule != applied_rule
+            variant_listing.applied_rule_id != rule_id
         ):
             variant_listing.discounted_price_amount = discounted_variant_price.amount
-            variant_listing.applied_rule = applied_rule
+            variant_listing.applied_rule_id = rule_id
             variants_listings_to_update.append(variant_listing)
 
             variant_listing_cleanup_rules[variant_listing.id] = rule_id
