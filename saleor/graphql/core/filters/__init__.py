@@ -16,6 +16,7 @@ from .shared_filters import (
     GlobalIDFormField,
     GlobalIDMultipleChoiceField,
     GlobalIDMultipleChoiceFilter,
+    filter_private_metadata,
 )
 from .where_filters import (
     BooleanWhereFilter,
@@ -74,4 +75,5 @@ __all__ = [
     "WhereInputObjectType",
     "ChannelFilterInputObjectType",
     "FilterInputObjectType",
+    "filter_private_metadata",
 ]

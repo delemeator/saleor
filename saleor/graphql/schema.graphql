@@ -10477,6 +10477,13 @@ input ProductVariantFilterInput @doc(category: "Products") {
 
   """Filter by product variant stock status."""
   stockAvailability: StockAvailability
+
+  """
+  Filter by private metadata fields. Requires one of the following permissions: MANAGE_PRODUCTS.
+  
+  Added in Saleor 3.22.
+  """
+  privateMetadata: [MetadataFilter!]
 }
 
 input ProductVariantWhereInput @doc(category: "Products") {
@@ -10498,6 +10505,13 @@ input ProductVariantWhereInput @doc(category: "Products") {
 
   """Filter by variant stock status."""
   stockAvailability: StockAvailability
+
+  """
+  Filter by private metadata fields. Requires one of the following permissions: MANAGE_PRODUCTS.
+  
+  Added in Saleor 3.22.
+  """
+  privateMetadata: [MetadataFilter!]
 
   """List of conditions that must be met."""
   AND: [ProductVariantWhereInput!]

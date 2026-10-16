@@ -12,6 +12,8 @@ from ....attribute.models import (
     Attribute,
     AttributeValue,
 )
+from ....core.exceptions import PermissionDenied
+from ....permission.enums import ProductPermissions
 from ....product.models import Product, ProductVariant
 from ...attribute.shared_filters import (
     CONTAINS_TYPING,
@@ -43,14 +45,17 @@ from ...core.filters import (
     GlobalIDMultipleChoiceWhereFilter,
     ListObjectTypeFilter,
     ListObjectTypeWhereFilter,
+    MetadataFilter,
     MetadataFilterBase,
     MetadataWhereFilterBase,
     ObjectTypeFilter,
     ObjectTypeWhereFilter,
+    filter_private_metadata,
 )
 from ...core.filters.where_input import StringFilterInput, WhereInputObjectType
 from ...core.types import DateTimeRangeInput
 from ...product.enums import StockAvailability
+from ...utils import get_user_or_app_from_context
 from ...utils.filters import (
     Number,
     filter_by_ids,
@@ -62,6 +67,18 @@ from .product_helpers import (
     where_filter_variant_stock_availability,
 )
 from .shared import filter_updated_at_range
+
+PRIVATE_METADATA_FILTER_DESCRIPTION = (
+    "Filter by private metadata fields. Requires one of the following "
+    "permissions: MANAGE_PRODUCTS." + ADDED_IN_322
+)
+
+
+def filter_variant_private_metadata(request, qs, value):
+    requestor = get_user_or_app_from_context(request) if request else None
+    if not requestor or not requestor.has_perm(ProductPermissions.MANAGE_PRODUCTS):
+        raise PermissionDenied(permissions=[ProductPermissions.MANAGE_PRODUCTS])
+    return filter_private_metadata(qs, None, value)
 
 
 def filter_sku_list(qs, _, value):
@@ -713,10 +730,18 @@ class ProductVariantFilter(MetadataFilterBase):
         method="filter_stock_availability",
         help_text="Filter by product variant stock status.",
     )
+    private_metadata = ListObjectTypeFilter(
+        input_class=MetadataFilter,
+        method="filter_private_metadata",
+        help_text=PRIVATE_METADATA_FILTER_DESCRIPTION,
+    )
 
     class Meta:
         model = ProductVariant
         fields = ["search", "sku"]
+
+    def filter_private_metadata(self, queryset, _name, value):
+        return filter_variant_private_metadata(self.request, queryset, value)
 
     def product_variant_filter_search(self, queryset, _name, value):
         if not value:
@@ -754,10 +779,18 @@ class ProductVariantWhere(MetadataWhereFilterBase):
         method="filter_stock_availability",
         help_text="Filter by variant stock status.",
     )
+    private_metadata = ListObjectTypeFilter(
+        input_class=MetadataFilter,
+        method="filter_private_metadata",
+        help_text=PRIVATE_METADATA_FILTER_DESCRIPTION,
+    )
 
     class Meta:
         model = ProductVariant
         fields = []
+
+    def filter_private_metadata(self, queryset, _name, value):
+        return filter_variant_private_metadata(self.request, queryset, value)
 
     @staticmethod
     def filter_product_sku(qs, _, value):

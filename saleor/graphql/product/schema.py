@@ -694,7 +694,7 @@ class ProductQueries(graphene.ObjectType):
                 qs = ChannelQsContext(qs=variant_qs, channel_slug=qs.channel_slug)
             kwargs["channel"] = qs.channel_slug
             qs = filter_connection_queryset(
-                qs, kwargs, allow_replica=info.context.allow_replica
+                qs, kwargs, info.context, allow_replica=info.context.allow_replica
             )
             return create_connection_slice(
                 qs, info, kwargs, ProductVariantCountableConnection

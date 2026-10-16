@@ -60,11 +60,21 @@ class GlobalIDMultipleChoiceFilter(MultipleChoiceFilter):
 
 
 def filter_metadata(qs, _, value):
+    return _filter_by_metadata_field(qs, "metadata", value)
+
+
+def filter_private_metadata(qs, _, value):
+    return _filter_by_metadata_field(qs, "private_metadata", value)
+
+
+def _filter_by_metadata_field(qs, field_name, value):
     for metadata_item in value:
         metadata_value = metadata_item.get("value")
         metadata_key = metadata_item.get("key")
         if metadata_value:
-            qs = qs.filter(metadata__contains={metadata_key: metadata_value})
+            qs = qs.filter(
+                **{f"{field_name}__contains": {metadata_key: metadata_value}}
+            )
         else:
-            qs = qs.filter(metadata__has_key=metadata_key)
+            qs = qs.filter(**{f"{field_name}__has_key": metadata_key})
     return qs
