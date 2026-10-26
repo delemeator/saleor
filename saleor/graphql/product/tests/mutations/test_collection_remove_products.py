@@ -73,3 +73,31 @@ def test_remove_products_from_collection_trigger_product_updated_webhook(
     data = content["data"]["collectionRemoveProducts"]["collection"]
     assert data["products"]["totalCount"] == products_before - len(product_ids)
     # assert len(product_list) == product_updated_mock.call_count
+
+
+@patch("saleor.plugins.manager.PluginsManager.collection_updated")
+def test_remove_products_from_collection_trigger_collection_updated_webhook(
+    collection_updated_mock,
+    staff_api_client,
+    collection,
+    product_list,
+    permission_manage_products,
+):
+    # given
+    collection.products.add(*product_list)
+    collection_id = graphene.Node.to_global_id("Collection", collection.id)
+    product_ids = [
+        graphene.Node.to_global_id("Product", product.pk) for product in product_list
+    ]
+    variables = {"id": collection_id, "products": product_ids}
+
+    # when
+    response = staff_api_client.post_graphql(
+        COLLECTION_REMOVE_PRODUCTS_MUTATION,
+        variables,
+        permissions=[permission_manage_products],
+    )
+
+    # then
+    get_graphql_content(response)
+    collection_updated_mock.assert_called_once_with(collection)
