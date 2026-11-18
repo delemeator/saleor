@@ -3735,6 +3735,11 @@ type Checkout implements Node & ObjectWithMetadata @doc(category: "Checkout") {
   """
   user: User
 
+  """
+  Whether the checkout is assigned to a user. Unlike `user`, it requires no permissions, so storefronts can tell a guest checkout from one owned by an account.
+  """
+  isAttachedToUser: Boolean!
+
   """The channel for which checkout was created."""
   channel: Channel!
 

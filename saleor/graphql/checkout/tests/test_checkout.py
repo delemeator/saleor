@@ -1453,6 +1453,63 @@ def test_anonymous_client_can_fetch_checkout_with_attached_user_without_user_dat
     assert content["data"]["checkout"]
 
 
+QUERY_CHECKOUT_IS_ATTACHED_TO_USER = """
+    query getCheckout($id: ID) {
+        checkout(id: $id) {
+           isAttachedToUser
+        }
+    }
+    """
+
+
+def test_anonymous_client_fetch_is_attached_to_user_for_guest_checkout(
+    api_client, checkout
+):
+    # given
+    variables = {"id": to_global_id_or_none(checkout)}
+
+    # when
+    response = api_client.post_graphql(QUERY_CHECKOUT_IS_ATTACHED_TO_USER, variables)
+
+    # then
+    content = get_graphql_content(response)
+    assert content["data"]["checkout"]["isAttachedToUser"] is False
+
+
+def test_anonymous_client_fetch_is_attached_to_user_for_user_checkout(
+    api_client, checkout, customer_user
+):
+    # given
+    checkout.user = customer_user
+    checkout.save()
+    variables = {"id": to_global_id_or_none(checkout)}
+
+    # when
+    response = api_client.post_graphql(QUERY_CHECKOUT_IS_ATTACHED_TO_USER, variables)
+
+    # then
+    content = get_graphql_content(response)
+    assert content["data"]["checkout"]["isAttachedToUser"] is True
+
+
+def test_customer_fetch_is_attached_to_user_for_other_users_checkout(
+    user_api_client, checkout, staff_user
+):
+    # given
+    checkout.user = staff_user
+    checkout.save()
+    variables = {"id": to_global_id_or_none(checkout)}
+
+    # when
+    response = user_api_client.post_graphql(
+        QUERY_CHECKOUT_IS_ATTACHED_TO_USER, variables
+    )
+
+    # then
+    content = get_graphql_content(response)
+    assert content["data"]["checkout"]["isAttachedToUser"] is True
+
+
 def test_authorized_access_to_checkout_user_as_customer(
     user_api_client,
     checkout,

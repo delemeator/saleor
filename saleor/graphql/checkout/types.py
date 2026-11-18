@@ -639,6 +639,14 @@ class Checkout(SyncWebhookControlContextModelObjectType[models.Checkout]):
             f"{AuthorizationFilters.OWNER.name}."
         ),
     )
+    is_attached_to_user = graphene.Boolean(
+        required=True,
+        description=(
+            "Whether the checkout is assigned to a user. Unlike `user`, it requires "
+            "no permissions, so storefronts can tell a guest checkout from one "
+            "owned by an account."
+        ),
+    )
     channel = graphene.Field(
         Channel,
         required=True,
@@ -984,6 +992,12 @@ class Checkout(SyncWebhookControlContextModelObjectType[models.Checkout]):
             CheckoutPermissions.HANDLE_TAXES,
         )
         return user
+
+    @staticmethod
+    def resolve_is_attached_to_user(
+        root: SyncWebhookControlContext[models.Checkout], _info: ResolveInfo
+    ):
+        return root.node.user_id is not None
 
     @staticmethod
     def resolve_email(
